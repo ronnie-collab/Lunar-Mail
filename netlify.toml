@@ -1,0 +1,94 @@
+# ============================================================
+# Lunar Mail — Netlify Deployment Configuration
+# Project: EDRA (Email Draft Reply Assistant)
+# Owner: Ronnie David · Lunar Rails
+# Repo: https://github.com/Lunar-Rails/lunar-mail
+# ============================================================
+
+[build]
+  # Static site — no build command needed
+  publish = "."
+
+# ── Security headers ────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options             = "DENY"
+    X-XSS-Protection            = "1; mode=block"
+    X-Content-Type-Options      = "nosniff"
+    Referrer-Policy             = "strict-origin-when-cross-origin"
+    Permissions-Policy          = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy     = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://api.fontshare.com; font-src 'self' https://api.fontshare.com https://cdn.fontshare.com; img-src 'self' data: https:; connect-src 'self';"
+    Strict-Transport-Security   = "max-age=31536000; includeSubDomains; preload"
+
+# ── Cache: HTML — always fresh ───────────────────────────────
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# ── Cache: CSS + JS — versioned, 30 days ────────────────────
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, immutable"
+
+# ── Cache: Assets ────────────────────────────────────────────
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, immutable"
+
+# ── Redirects ────────────────────────────────────────────────
+# Root → login page
+[[redirects]]
+  from   = "/"
+  to     = "/index.html"
+  status = 200
+
+# Pretty URLs: /dashboard → /dashboard.html
+[[redirects]]
+  from   = "/dashboard"
+  to     = "/dashboard.html"
+  status = 200
+
+[[redirects]]
+  from   = "/inbox"
+  to     = "/inbox.html"
+  status = 200
+
+[[redirects]]
+  from   = "/inbox/:splat"
+  to     = "/inbox.html"
+  status = 200
+
+[[redirects]]
+  from   = "/compliance"
+  to     = "/compliance.html"
+  status = 200
+
+[[redirects]]
+  from   = "/admin"
+  to     = "/admin.html"
+  status = 200
+
+[[redirects]]
+  from   = "/review"
+  to     = "/email-review.html"
+  status = 200
+
+[[redirects]]
+  from   = "/review/:id"
+  to     = "/email-review.html?id=:id"
+  status = 200
+
+# 404 fallback → login
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 404

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lunar Mail — Dashboard</title>
+<link rel="stylesheet" href="css/main.css"/>
+<style>
+  .dash-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+  .activity-item { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .activity-item:last-child { border-bottom:none; }
+  .activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+  .activity-text { font-size:12.5px; color:var(--text-sec); line-height:1.5; }
+  .activity-time { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .mailbox-status-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .mailbox-status-row:last-child { border-bottom:none; }
+  .mailbox-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .mailbox-info { flex:1; }
+  .mailbox-name { font-size:12.5px; font-weight:600; }
+  .mailbox-email { font-size:11px; color:var(--text-muted); font-family:var(--mono); }
+  .mailbox-count { font-size:12px; font-weight:700; color:var(--purple); }
+  .quick-email-row { display:flex; align-items:center; gap:12px; padding:11px var(--s4); border-radius:var(--r-md); cursor:pointer; transition:background var(--fast) ease; }
+  .quick-email-row:hover { background:var(--bg-elevated); }
+  .quick-email-avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white; flex-shrink:0; }
+  .quick-email-meta { flex:1; min-width:0; }
+  .quick-email-sender { font-size:12.5px; font-weight:600; margin-bottom:2px; }
+  .quick-email-subject { font-size:11.5px; color:var(--text-sec); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .esc-alert { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:var(--r-lg); padding:14px 16px; margin-bottom:12px; cursor:pointer; transition:all var(--base) ease; }
+  .esc-alert:hover { border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.12); }
+  .esc-alert-title { font-size:12.5px; font-weight:700; color:#fca5a5; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+  .esc-alert-sub { font-size:11.5px; color:var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="bg-orb orb-purple"></div>
+<div class="bg-orb orb-pink"></div>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+          <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7F21FF"/><stop offset="55%" stop-color="#FF569D"/><stop offset="100%" stop-color="#FFBA0D"/></linearGradient></defs>
+          <rect width="48" height="48" rx="10" fill="rgba(127,33,255,0.12)"/>
+          <text x="8" y="36" font-family="Satoshi,Arial,sans-serif" font-weight="900" font-size="32" fill="url(#lg)">R</text>
+        </svg>
+      </div>
+      <div class="logo-wordmark">
+        <div class="logo-product">Lunar Mail</div>
+        <div class="logo-by">by Lunar Rails</div>
+      </div>
+    </div>
+    <div class="sidebar-section">Navigation</div>
+    <nav>
+      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">◼</span>Dashboard</div>
+      <div class="nav-item" data-page="inbox" onclick="navigate('inbox')"><span class="nav-icon">📥</span>Inbox<span class="nav-badge">8</span></div>
+      <div class="nav-item" data-page="compliance" onclick="navigate('compliance')"><span class="nav-icon">🔒</span>Compliance Queue<span class="nav-badge red">2</span></div>
+      <div class="nav-item" data-page="admin" onclick="navigate('admin')"><span class="nav-icon">⚙</span>Admin Panel</div>
+    </nav>
+    <div class="sidebar-section" style="margin-top:8px;">Companies</div>
+    <div class="company-filter">
+      <button class="company-btn active" onclick="filterCompany(this,'all')"><span class="company-dot" style="background:linear-gradient(135deg,#7F21FF,#FF569D);"></span>All Mailboxes</button>
+      <button class="company-btn" onclick="filterCompany(this,'perpolis')"><span class="company-dot" style="background:#7F21FF;"></span>Perpolis OTC</button>
+      <button class="company-btn" onclick="filterCompany(this,'acres')"><span class="company-dot" style="background:#22C55E;"></span>40 Acres</button>
+      <button class="company-btn" onclick="filterCompany(this,'paidly')"><span class="company-dot" style="background:#FFBA0D;"></span>Paidly Interactive</button>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,#FF569D,#7F21FF);">RD</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-user-name">Ronnie David</div>
+        <div class="user-role" id="sidebar-user-role">Super Admin</div>
+      </div>
+      <button class="role-switcher" onclick="openRoleSwitcher()" data-tip="Switch view">⇅</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <!-- Demo Banner -->
+    <div class="demo-banner">
+      <span class="demo-badge">Demo</span>
+      <span>Phase 1 Prototype · <span id="demo-user-label">Viewing as: Ronnie David (Super Admin)</span></span>
+      <span style="margin-left:auto;font-size:11px;">Switch roles using ⇅ in the sidebar</span>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div class="topbar-title grad-text">Dashboard</div>
+      <div class="topbar-actions">
+        <div style="font-size:12px;color:var(--text-muted);" id="current-date"></div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('inbox')">📥 Open Inbox</button>
+        <button class="btn btn-primary btn-sm" onclick="navigate('compliance')">🔒 Compliance (2)</button>
+      </div>
+    </div>
+
+    <!-- Page Body -->
+    <div class="page-body">
+
+      <!-- Stats -->
+      <div class="stat-grid animate-in">
+        <div class="stat-card">
+          <div class="stat-icon">📧</div>
+          <div class="stat-label">Emails Today</div>
+          <div class="stat-num">24</div>
+          <div class="stat-sub">+6 since yesterday</div>
+        </div>
+        <div class="stat-card delay-1">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-label">Pending Review</div>
+          <div class="stat-num">8</div>
+          <div class="stat-sub">3 high priority</div>
+        </div>
+        <div class="stat-card delay-2">
+          <div class="stat-icon">🔒</div>
+          <div class="stat-label">Compliance Alerts</div>
+          <div class="stat-num" style="background:linear-gradient(90deg,#EF4444,#FF569D);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">2</div>
+          <div class="stat-sub">1 escalated >24h</div>
+        </div>
+        <div class="stat-card delay-3">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">Approved Today</div>
+          <div class="stat-num" style="background:linear-gradient(90deg,#22C55E,#FFBA0D);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">14</div>
+          <div class="stat-sub">Avg 4 min review</div>
+        </div>
+      </div>
+
+      <div class="dash-grid animate-in delay-2">
+
+        <!-- LEFT: Recent Emails + Mailbox Status -->
+        <div>
+          <!-- Compliance Alerts (top priority) -->
+          <div style="margin-bottom:20px;">
+            <div class="section-label">🔒 Compliance Alerts — Action Required</div>
+            <div class="esc-alert" onclick="navigate('compliance')">
+              <div class="esc-alert-title">
+                <span style="width:8px;height:8px;border-radius:50%;background:#EF4444;display:inline-block;animation:pulse-glow 2s infinite;"></span>
+                AML Query — Perpolis compliance@perpolis.ca
+              </div>
+              <div class="esc-alert-sub">From: Reginald Thompson · Received 26h ago · Mark notified · No response yet — 48h auto-escalation in 22h</div>
+            </div>
+            <div class="esc-alert" onclick="navigate('compliance')">
+              <div class="esc-alert-title">
+                <span style="width:8px;height:8px;border-radius:50%;background:#FFBA0D;display:inline-block;"></span>
+                Regulatory Filing Deadline — 40 Acres
+              </div>
+              <div class="esc-alert-sub">From: Sofia Ruiz · compliance@40acres.pro · Received 5h ago · Awaiting Sofia's review</div>
+            </div>
+          </div>
+
+          <!-- Recent Emails -->
+          <div>
+            <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>Recent Emails</span>
+              <button class="btn btn-ghost btn-xs" onclick="navigate('inbox')">View all →</button>
+            </div>
+            <div class="card-flat" style="padding:0;overflow:hidden;">
+              <div id="recent-emails"></div>
+            </div>
+          </div>
+
+          <!-- Mailbox Status -->
+          <div style="margin-top:20px;">
+            <div class="section-label">Mailbox Status</div>
+            <div class="card-flat">
+              <div class="mailbox-status-row">
+                <div class="mailbox-dot" style="background:#7F21FF;"></div>
+                <div class="mailbox-info"><div class="mailbox-name">Perpolis — Client Service</div><div class="mailbox-email">clientservice@perpolis.ca</div></div>
+                <div><div class="mailbox-count">5</div><div style="font-size:10px;color:var(--text-muted);">pending</div></div>
+                <span class="badge badge-approved">Live</span>
+              </div>
+              <div class="mailbox-status-row">
+                <div class="mailbox-dot" style="background:#EF4444;"></div>
+                <div class="mailbox-info"><div class="mailbox-name">Perpolis — Compliance</div><div class="mailbox-email">compliance@perpolis.ca</div></div>
+                <div><div class="mailbox-count" style="color:#EF4444;">2</div><div style="font-size:10px;color:var(--text-muted);">alerts</div></div>
+                <span class="badge badge-escalated">Alert</span>
+              </div>
+              <div class="mailbox-status-row">
+                <div class="mailbox-dot" style="background:#22C55E;"></div>
+                <div class="mailbox-info"><div class="mailbox-name">40 Acres — Client Service</div><div class="mailbox-email">clientservice@40acres.pro</div></div>
+                <div><div class="mailbox-count">1</div><div style="font-size:10px;color:var(--text-muted);">pending</div></div>
+                <span class="badge badge-pending">Phase 3</span>
+              </div>
+              <div class="mailbox-status-row">
+                <div class="mailbox-dot" style="background:#10b981;"></div>
+                <div class="mailbox-info"><div class="mailbox-name">40 Acres — Compliance</div><div class="mailbox-email">compliance@40acres.pro</div></div>
+                <div><div class="mailbox-count">1</div><div style="font-size:10px;color:var(--text-muted);">alert</div></div>
+                <span class="badge badge-pending">Phase 3b</span>
+              </div>
+              <div class="mailbox-status-row">
+                <div class="mailbox-dot" style="background:#FFBA0D;"></div>
+                <div class="mailbox-info"><div class="mailbox-name">Paidly Interactive</div><div class="mailbox-email">clientservices@paidlyinteractive.tech</div></div>
+                <div><div class="mailbox-count">0</div><div style="font-size:10px;color:var(--text-muted);">pending</div></div>
+                <span class="badge badge-archived">Phase 4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Activity + AI stats -->
+        <div>
+          <!-- AI Performance -->
+          <div class="section-label">AI Performance — Today</div>
+          <div class="card-flat" style="margin-bottom:20px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+              <div style="background:var(--bg-elevated);border-radius:var(--r-md);padding:14px;text-align:center;">
+                <div class="stat-num" style="font-size:28px;">94%</div>
+                <div class="stat-label">Avg AI Confidence</div>
+              </div>
+              <div style="background:var(--bg-elevated);border-radius:var(--r-md);padding:14px;text-align:center;">
+                <div class="stat-num" style="font-size:28px;">18s</div>
+                <div class="stat-label">Draft Generation</div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:6px;"><span>Auto-classified</span><span style="color:var(--success)">22 / 24</span></div>
+              <div style="height:5px;background:var(--border);border-radius:var(--r-full);overflow:hidden;"><div style="height:100%;width:92%;background:var(--grad);border-radius:var(--r-full);"></div></div>
+            </div>
+            <div style="margin-top:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:6px;"><span>Zero-Send policy enforced</span><span style="color:var(--success)">100%</span></div>
+              <div style="height:5px;background:var(--border);border-radius:var(--r-full);overflow:hidden;"><div style="height:100%;width:100%;background:linear-gradient(90deg,#22C55E,#FFBA0D);border-radius:var(--r-full);"></div></div>
+            </div>
+          </div>
+
+          <!-- Activity Feed -->
+          <div class="section-label">Activity Feed</div>
+          <div class="card-flat">
+            <div class="activity-item">
+              <div class="activity-dot" style="background:#22C55E;"></div>
+              <div><div class="activity-text"><strong>Felipe</strong> approved reply to David Chen (Perpolis)</div><div class="activity-time">9 min ago</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:#7F21FF;"></div>
+              <div><div class="activity-text">AI drafted reply to Sarah Whitmore — KYC follow-up (98% confidence)</div><div class="activity-time">32 min ago</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:#EF4444;"></div>
+              <div><div class="activity-text">Compliance flag triggered — AML Query routed to <strong>Mark Antidormi</strong></div><div class="activity-time">26h ago · ⚠️ No response</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:#22C55E;"></div>
+              <div><div class="activity-text"><strong>Lisa</strong> edited draft for North Star LP onboarding email</div><div class="activity-time">Yesterday, 4:12 PM</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:#FFBA0D;"></div>
+              <div><div class="activity-text">James Beaumont inquiry classified as <strong>new_inquiry</strong> — 40 Acres</div><div class="activity-time">1h ago</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:#6b7280;"></div>
+              <div><div class="activity-text">Spam auto-archived — promo@cryptonews-daily.io (99% confidence)</div><div class="activity-time">4h ago</div></div>
+            </div>
+          </div>
+
+          <!-- Team Online -->
+          <div class="section-label" style="margin-top:20px;">Team Active Now</div>
+          <div class="card-flat">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:6px;background:var(--bg-elevated);border-radius:var(--r-full);padding:5px 12px;font-size:12px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#22C55E;"></div>Felipe
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;background:var(--bg-elevated);border-radius:var(--r-full);padding:5px 12px;font-size:12px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#22C55E;"></div>Lisa
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;background:var(--bg-elevated);border-radius:var(--r-full);padding:5px 12px;font-size:12px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#22C55E;"></div>Ekaterina
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;background:var(--bg-elevated);border-radius:var(--r-full);padding:5px 12px;font-size:12px;color:var(--text-muted);">
+                <div style="width:8px;height:8px;border-radius:50%;background:#6b7280;"></div>Mark · Away
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-CA', {weekday:'short',month:'short',day:'numeric'});
+
+// Render recent emails
+const recentEmails = EMAILS.filter(e => e.status !== 'archived').slice(0,4);
+const container = document.getElementById('recent-emails');
+container.innerHTML = recentEmails.map(em => `
+  <div class="quick-email-row" onclick="window.location.href='email-review.html?id=${em.id}'">
+    <div class="quick-email-avatar" style="background:${em.avatarColor};">${em.from_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+    <div class="quick-email-meta">
+      <div class="quick-email-sender">${em.from_name} <span style="font-size:10px;color:var(--text-muted);font-weight:400;">${em.timeAgo}</span></div>
+      <div class="quick-email-subject">${em.subject}</div>
+    </div>
+    <span class="badge ${categoryBadgeClass(em.category)}">${categoryLabel(em.category)}</span>
+  </div>
+`).join('');
+
+function filterCompany(btn, company) {
+  document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

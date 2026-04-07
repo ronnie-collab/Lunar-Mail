@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lunar Mail — Inbox</title>
+<link rel="stylesheet" href="css/main.css"/>
+<style>
+  .inbox-wrap { display:grid; grid-template-columns:380px 1fr; height:calc(100vh - 97px); overflow:hidden; }
+  .email-list-panel { border-right:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; }
+  .filter-bar { display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg-sidebar); flex-wrap:wrap; }
+  .filter-chip { padding:4px 12px; border-radius:var(--r-full); font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); color:var(--text-muted); background:transparent; transition:all var(--fast) ease; }
+  .filter-chip:hover { color:var(--text); border-color:var(--border-med); }
+  .filter-chip.active { background:rgba(127,33,255,0.12); color:#c4b5fd; border-color:rgba(127,33,255,0.3); }
+  .email-item { display:flex; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background var(--fast) ease; position:relative; }
+  .email-item:hover { background:var(--bg-elevated); }
+  .email-item.selected { background:rgba(127,33,255,0.07); border-right:2px solid var(--purple); }
+  .email-item.unread .em-sender { font-weight:700; }
+  .em-unread-dot { position:absolute; left:6px; top:50%; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:var(--purple); }
+  .em-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0; }
+  .em-body { flex:1; min-width:0; }
+  .em-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+  .em-sender { font-size:13px; font-weight:600; }
+  .em-time { font-size:10.5px; color:var(--text-muted); flex-shrink:0; }
+  .em-subject { font-size:12.5px; color:var(--text-sec); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .em-preview { font-size:11.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .em-tags { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+  /* Detail pane */
+  .detail-pane { overflow-y:auto; display:flex; flex-direction:column; background:var(--bg); }
+  .detail-header { padding:24px; border-bottom:1px solid var(--border); }
+  .detail-subject { font-size:19px; font-weight:700; margin-bottom:12px; line-height:1.3; }
+  .detail-meta-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .detail-from { display:flex; align-items:center; gap:10px; }
+  .detail-body { padding:24px; font-size:14px; line-height:1.85; color:var(--text-sec); white-space:pre-line; border-bottom:1px solid var(--border); }
+  .detail-ai { margin:20px; background:rgba(127,33,255,0.05); border:1px solid rgba(127,33,255,0.25); border-radius:var(--r-xl); overflow:hidden; }
+  .detail-ai-header { background:rgba(127,33,255,0.1); border-bottom:1px solid rgba(127,33,255,0.2); padding:12px 18px; display:flex; align-items:center; gap:10px; }
+  .detail-ai-body { padding:18px; }
+  .detail-ai-draft { font-size:13.5px; line-height:1.8; color:var(--text-sec); white-space:pre-line; }
+  .detail-actions { display:flex; gap:10px; padding:14px 18px; border-top:1px solid var(--border); flex-wrap:wrap; }
+  .comment-input { width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--r-md); padding:10px 14px; font-family:var(--font); font-size:13px; color:var(--text); resize:none; outline:none; }
+  .comment-input:focus { border-color:var(--purple); }
+  .empty-detail { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted); gap:12px; }
+</style>
+</head>
+<body>
+<div class="bg-orb orb-purple"></div>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+          <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7F21FF"/><stop offset="55%" stop-color="#FF569D"/><stop offset="100%" stop-color="#FFBA0D"/></linearGradient></defs>
+          <rect width="48" height="48" rx="10" fill="rgba(127,33,255,0.12)"/>
+          <text x="8" y="36" font-family="Satoshi,Arial,sans-serif" font-weight="900" font-size="32" fill="url(#lg)">R</text>
+        </svg>
+      </div>
+      <div class="logo-wordmark"><div class="logo-product">Lunar Mail</div><div class="logo-by">by Lunar Rails</div></div>
+    </div>
+    <div class="sidebar-section">Navigation</div>
+    <nav>
+      <div class="nav-item" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">◼</span>Dashboard</div>
+      <div class="nav-item active" data-page="inbox" onclick="navigate('inbox')"><span class="nav-icon">📥</span>Inbox<span class="nav-badge">8</span></div>
+      <div class="nav-item" data-page="compliance" onclick="navigate('compliance')"><span class="nav-icon">🔒</span>Compliance Queue<span class="nav-badge red">2</span></div>
+      <div class="nav-item" data-page="admin" onclick="navigate('admin')"><span class="nav-icon">⚙</span>Admin Panel</div>
+    </nav>
+    <div class="sidebar-section" style="margin-top:8px;">Companies</div>
+    <div class="company-filter">
+      <button class="company-btn active" id="filter-all" onclick="filterByCompany('all',this)"><span class="company-dot" style="background:linear-gradient(135deg,#7F21FF,#FF569D);"></span>All Mailboxes</button>
+      <button class="company-btn" id="filter-perpolis" onclick="filterByCompany('perpolis',this)"><span class="company-dot" style="background:#7F21FF;"></span>Perpolis OTC</button>
+      <button class="company-btn" id="filter-acres" onclick="filterByCompany('acres',this)"><span class="company-dot" style="background:#22C55E;"></span>40 Acres</button>
+      <button class="company-btn" id="filter-paidly" onclick="filterByCompany('paidly',this)"><span class="company-dot" style="background:#FFBA0D;"></span>Paidly Interactive</button>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,#FF569D,#7F21FF);">RD</div>
+      <div class="user-info"><div class="user-name" id="sidebar-user-name">Ronnie David</div><div class="user-role" id="sidebar-user-role">Super Admin</div></div>
+      <button class="role-switcher" onclick="openRoleSwitcher()">⇅</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <div class="demo-banner">
+      <span class="demo-badge">Demo</span>
+      <span>Phase 1 Prototype · <span id="demo-user-label">Viewing as: Ronnie David (Super Admin)</span></span>
+    </div>
+    <div class="topbar">
+      <div class="topbar-title grad-text">Inbox</div>
+      <div class="topbar-actions">
+        <div class="input-wrap" style="width:200px;">
+          <span class="input-icon" style="font-size:13px;">🔍</span>
+          <input class="input has-icon" type="search" placeholder="Search emails..." oninput="searchEmails(this.value)"/>
+        </div>
+        <select class="select" style="width:140px;" onchange="filterByStatus(this.value)">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="draft">Draft Ready</option>
+          <option value="approved">Approved</option>
+          <option value="escalated">Escalated</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="inbox-wrap">
+      <!-- Email list -->
+      <div class="email-list-panel">
+        <div class="filter-bar">
+          <button class="filter-chip active" onclick="setFilter(this,'all')">All</button>
+          <button class="filter-chip" onclick="setFilter(this,'unread')">Unread</button>
+          <button class="filter-chip" onclick="setFilter(this,'pending')">Pending</button>
+          <button class="filter-chip" onclick="setFilter(this,'compliance')">Compliance</button>
+          <button class="filter-chip" onclick="setFilter(this,'spam')">Spam</button>
+        </div>
+        <div id="email-list" style="flex:1;overflow-y:auto;"></div>
+      </div>
+
+      <!-- Detail pane -->
+      <div class="detail-pane" id="detail-pane">
+        <div class="empty-detail">
+          <div style="font-size:36px;opacity:0.2;">📧</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text-sec);">Select an email to review</div>
+          <div style="font-size:13px;">Click any email from the list to view the thread and AI draft</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+let currentFilter = 'all';
+let currentCompany = 'all';
+let selectedId = null;
+
+function renderEmailList(emails) {
+  const container = document.getElementById('email-list');
+  if (!emails.length) {
+    container.innerHTML = `<div class="empty-detail" style="padding:60px 20px;"><div style="font-size:28px;opacity:0.3;">📭</div><div class="empty-title">No emails found</div></div>`;
+    return;
+  }
+  container.innerHTML = emails.map(em => `
+    <div class="email-item ${em.unread?'unread':''} ${selectedId===em.id?'selected':''}" onclick="selectEmail('${em.id}')">
+      ${em.unread?'<div class="em-unread-dot"></div>':''}
+      <div class="em-avatar" style="background:${em.avatarColor};">${em.from_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+      <div class="em-body">
+        <div class="em-top">
+          <div class="em-sender">${em.from_name}</div>
+          <div class="em-time">${em.timeAgo}</div>
+        </div>
+        <div class="em-subject">${em.subject}</div>
+        <div class="em-preview">${em.preview}</div>
+        <div class="em-tags">
+          <span class="badge ${categoryBadgeClass(em.category)}">${categoryLabel(em.category)}</span>
+          <span class="badge ${statusBadgeClass(em.status)}">${em.status}</span>
+          ${em.priority==='high'?'<span class="badge badge-high">High</span>':''}
+          ${em.flagged?'<span class="badge badge-escalated">🔒 Escalated</span>':''}
+          <span class="badge badge-${em.company.toLowerCase().replace(/\s/g,'').includes('40')?' acres':em.company.toLowerCase().includes('paidly')?'paidly':'perpolis'}">${em.company}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getFilteredEmails() {
+  return EMAILS.filter(em => {
+    const matchCompany = currentCompany === 'all' ||
+      (currentCompany === 'perpolis' && em.company === 'Perpolis OTC') ||
+      (currentCompany === 'acres' && em.company === '40 Acres') ||
+      (currentCompany === 'paidly' && em.company === 'Paidly Interactive');
+    const matchFilter = currentFilter === 'all' ||
+      (currentFilter === 'unread' && em.unread) ||
+      (currentFilter === 'pending' && em.status === 'pending') ||
+      (currentFilter === 'compliance' && em.category === 'compliance_query') ||
+      (currentFilter === 'spam' && em.category === 'spam');
+    return matchCompany && matchFilter;
+  });
+}
+
+function setFilter(btn, filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEmailList(getFilteredEmails());
+}
+
+function filterByCompany(company, btn) {
+  currentCompany = company;
+  document.querySelectorAll('.company-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEmailList(getFilteredEmails());
+}
+
+function filterByStatus(status) {
+  currentFilter = status;
+  renderEmailList(getFilteredEmails());
+}
+
+function searchEmails(q) {
+  const results = EMAILS.filter(em =>
+    em.from_name.toLowerCase().includes(q.toLowerCase()) ||
+    em.subject.toLowerCase().includes(q.toLowerCase()) ||
+    em.preview.toLowerCase().includes(q.toLowerCase())
+  );
+  renderEmailList(results);
+}
+
+function selectEmail(id) {
+  selectedId = id;
+  const em = EMAILS.find(e => e.id === id);
+  if (!em) return;
+  renderEmailList(getFilteredEmails());
+
+  const isCompliance = em.category === 'compliance_query' || em.flagged;
+
+  document.getElementById('detail-pane').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-subject">${em.subject}</div>
+      <div class="detail-meta-row">
+        <div class="detail-from">
+          <div class="em-avatar" style="width:32px;height:32px;background:${em.avatarColor};font-size:11px;">${em.from_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${em.from_name}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">${em.from_email}</div>
+          </div>
+        </div>
+        <span class="badge ${categoryBadgeClass(em.category)}">${categoryLabel(em.category)}</span>
+        <span class="badge ${statusBadgeClass(em.status)}">${em.status}</span>
+        ${em.priority==='high'?'<span class="badge badge-high">High Priority</span>':''}
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${em.timeAgo}</span>
+      </div>
+      ${isCompliance ? `<div class="alert alert-error" style="margin-top:12px;"><span>🔒</span><span><strong>Compliance Flag</strong> — This email has been escalated to ${em.escalatedTo || 'compliance team'}. Do not draft a response without compliance review.</span></div>` : ''}
+    </div>
+
+    <div class="detail-body">${em.body}</div>
+
+    <div class="detail-ai">
+      <div class="detail-ai-header">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="url(#ai-grad)" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="url(#ai-grad)" stroke-width="1.5" stroke-linecap="round"/><defs><linearGradient id="ai-grad" x1="0" y1="0" x2="16" y2="16"><stop stop-color="#7F21FF"/><stop offset="1" stop-color="#FF569D"/></linearGradient></defs></svg>
+        <span class="ai-panel-label">AI Draft Reply</span>
+        ${em.aiConfidence !== '—' ? `<span style="margin-left:auto;font-size:11px;color:var(--success);font-weight:600;">✓ ${em.aiConfidence} confidence</span>` : '<span style="margin-left:auto;font-size:11px;color:#fca5a5;font-weight:600;">⚠ Manual review required</span>'}
+      </div>
+      <div class="detail-ai-body">
+        ${em.note ? `<div class="alert alert-warning" style="margin-bottom:12px;font-size:12px;"><span>⚠</span><span>${em.note}</span></div>` : ''}
+        <div class="detail-ai-draft" id="draft-content-${em.id}" contenteditable="${isCompliance?'false':'true'}" style="${isCompliance?'opacity:0.5;':'background:var(--bg-elevated);padding:14px;border-radius:var(--r-md);border:1px solid var(--border);min-height:100px;'}">${em.aiDraft}</div>
+      </div>
+      <div class="detail-actions">
+        ${!isCompliance ? `
+          <button class="btn btn-primary btn-sm" onclick="approveEmail('${em.id}')">✓ Approve & Send</button>
+          <button class="btn btn-secondary btn-sm">✏ Edit Draft</button>
+        ` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="flagCompliance('${em.id}')">🔒 Flag Compliance</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="archiveEmail('${em.id}')">Archive</button>
+      </div>
+    </div>
+
+    <!-- Internal Comments -->
+    <div style="padding:0 20px 20px;">
+      <div class="section-label" style="margin-top:8px;">Internal Comments <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(not visible to client)</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+        <div class="comment-item">
+          <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,#22C55E,#7F21FF);">FP</div>
+          <div class="comment-body">
+            <div class="comment-author">Felipe <span style="font-weight:400;color:var(--text-muted);">· Analyst</span></div>
+            <div class="comment-text">AI draft looks good. Double-checked the T+1 settlement info — confirmed correct. Ready to approve.</div>
+            <div class="comment-time">35 min ago</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div class="user-avatar" id="comment-avatar" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,#FF569D,#7F21FF);">RD</div>
+        <div style="flex:1;">
+          <textarea class="comment-input" rows="2" placeholder="Add an internal comment..."></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+            <button class="btn btn-ghost btn-xs">Post Comment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function approveEmail(id) {
+  const em = EMAILS.find(e => e.id === id);
+  if (!em) return;
+  if (confirm(`Approve and send this reply to ${em.from_email}?`)) {
+    em.status = 'approved';
+    em.unread = false;
+    renderEmailList(getFilteredEmails());
+    alert('✅ Reply approved and queued for sending via Front API.');
+  }
+}
+
+function flagCompliance(id) {
+  const em = EMAILS.find(e => e.id === id);
+  if (!em) return;
+  em.flagged = true;
+  em.status = 'escalated';
+  alert('🔒 Email flagged for compliance review. Mark Antidormi has been notified via Slack.');
+  renderEmailList(getFilteredEmails());
+}
+
+function archiveEmail(id) {
+  const em = EMAILS.find(e => e.id === id);
+  if (!em) return;
+  em.status = 'archived';
+  document.getElementById('detail-pane').innerHTML = `<div class="empty-detail"><div style="font-size:28px;opacity:0.3;">📭</div><div class="empty-title">Email archived</div></div>`;
+  renderEmailList(getFilteredEmails());
+}
+
+// Init
+renderEmailList(getFilteredEmails());
+</script>
+</body>
+</html>

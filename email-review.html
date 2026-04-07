@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Email Review — Lunar Mail</title>
+<link rel="stylesheet" href="css/main.css"/>
+<style>
+
+/* ── Review-specific layout ──────────────────────────── */
+.review-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Top bar */
+.review-topbar {
+  height: var(--topbar-h);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.review-topbar-left { display: flex; align-items: center; gap: 14px; }
+.review-logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+}
+.review-logo-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(127,33,255,0.12); border: 1px solid rgba(127,33,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 900;
+  background-image: var(--grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 32px; text-align: center;
+}
+.review-logo-text {
+  font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  background: var(--grad); -webkit-background-clip: text;
+  background-clip: text; -webkit-text-fill-color: transparent;
+}
+.review-divider { width: 1px; height: 20px; background: var(--border); }
+.review-breadcrumb {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-muted);
+}
+.review-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+.review-breadcrumb a:hover { color: var(--text-pri); }
+.review-breadcrumb-sep { color: var(--text-dim); font-size: 11px; }
+.review-breadcrumb-current { color: var(--text-pri); font-weight: 500; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.review-topbar-right { display: flex; align-items: center; gap: 10px; }
+.review-meta-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: var(--r-full);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted);
+}
+.review-meta-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ── Body: two-column review pane ───────────────────── */
+.review-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+.review-col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+.review-col:last-child { border-right: none; }
+
+.review-col-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.review-col-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.review-col-dot { width: 7px; height: 7px; border-radius: 50%; }
+.review-col-badge {
+  font-size: 10px; padding: 2px 7px; border-radius: var(--r-full);
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.review-col-scroll { flex: 1; overflow-y: auto; padding: 20px; }
+.review-col-scroll::-webkit-scrollbar { width: 4px; }
+.review-col-scroll::-webkit-scrollbar-track { background: transparent; }
+.review-col-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Original email panel ───────────────────────────── */
+.email-sender-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.email-avatar-lg {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.08);
+}
+.email-sender-info {}
+.email-sender-name { font-size: 15px; font-weight: 600; color: var(--text-pri); }
+.email-sender-addr { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.email-subject-lg { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-pri); margin-bottom: 6px; line-height: 1.4; }
+.email-meta-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.email-body-text {
+  font-size: 14px; line-height: 1.75; color: var(--text-sec);
+  white-space: pre-wrap; font-family: var(--font);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 18px;
+}
+.email-thread-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+/* ── AI Draft panel ──────────────────────────────────── */
+.ai-confidence-bar {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.ai-conf-ring {
+  position: relative; width: 44px; height: 44px; flex-shrink: 0;
+}
+.ai-conf-ring svg { width: 44px; height: 44px; transform: rotate(-90deg); }
+.ai-conf-ring-label {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-pri);
+}
+.ai-conf-details { flex: 1; }
+.ai-conf-score { font-size: 14px; font-weight: 700; color: var(--text-pri); }
+.ai-conf-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.ai-draft-notice {
+  display: flex; gap: 10px; padding: 10px 14px;
+  border-radius: var(--r-md); font-size: 12px; line-height: 1.5;
+  margin-bottom: 16px;
+}
+.ai-draft-notice.warn {
+  background: rgba(255,186,13,0.07); border: 1px solid rgba(255,186,13,0.2);
+  color: #FFBA0D;
+}
+.ai-draft-notice.info {
+  background: rgba(127,33,255,0.07); border: 1px solid rgba(127,33,255,0.2);
+  color: var(--purple-l);
+}
+.ai-draft-notice.danger {
+  background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2);
+  color: #ef4444;
+}
+
+.draft-editor {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 18px;
+  font-size: 14px; line-height: 1.75; color: var(--text-sec);
+  white-space: pre-wrap; font-family: var(--font);
+  min-height: 240px; outline: none;
+  transition: border-color 0.15s;
+}
+.draft-editor:focus { border-color: rgba(127,33,255,0.5); }
+.draft-editor[contenteditable="true"]:focus { border-color: rgba(127,33,255,0.5); }
+.draft-editor strong { color: var(--text-pri); }
+
+.draft-toolbar {
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-top: none; border-radius: 0 0 var(--r-md) var(--r-md);
+  flex-wrap: wrap;
+}
+.draft-tool-btn {
+  padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  font-family: var(--font);
+}
+.draft-tool-btn:hover { background: var(--bg-elevated); color: var(--text-pri); }
+.draft-tool-spacer { flex: 1; }
+.draft-char-count { font-size: 11px; color: var(--text-dim); }
+
+/* ── Action footer ───────────────────────────────────── */
+.review-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+  grid-column: 1 / -1;
+}
+.review-footer-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+.review-footer-right { display: flex; align-items: center; gap: 8px; }
+
+.btn-approve-send {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 22px; border-radius: var(--r-full);
+  background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+  border: none; color: white; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: var(--font);
+  transition: all 0.2s; letter-spacing: 0.01em;
+  box-shadow: 0 0 20px rgba(127,33,255,0.3);
+}
+.btn-approve-send:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 28px rgba(127,33,255,0.5);
+}
+.btn-approve-send:active { transform: translateY(0); }
+
+.btn-edit-draft {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 18px; border-radius: var(--r-full);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-sec); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font); transition: all 0.15s;
+}
+.btn-edit-draft:hover { border-color: rgba(127,33,255,0.4); color: var(--text-pri); }
+.btn-edit-draft.active {
+  border-color: rgba(127,33,255,0.6); color: var(--purple-l);
+  background: rgba(127,33,255,0.08);
+}
+
+.btn-flag {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 16px; border-radius: var(--r-full);
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font); transition: all 0.15s;
+}
+.btn-flag:hover { border-color: rgba(255,186,13,0.4); color: #FFBA0D; }
+.btn-flag.active { border-color: rgba(255,186,13,0.5); color: #FFBA0D; background: rgba(255,186,13,0.07); }
+
+.btn-archive {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 16px; border-radius: var(--r-full);
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font); transition: all 0.15s;
+}
+.btn-archive:hover { border-color: rgba(239,68,68,0.4); color: #ef4444; }
+
+/* reviewer assignment */
+.reviewer-assign {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: var(--r-full);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.reviewer-assign:hover { border-color: rgba(127,33,255,0.4); }
+.reviewer-assign-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+}
+
+/* ── Toast ───────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(16px);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--r-full); padding: 10px 20px;
+  font-size: 13px; font-weight: 500; color: var(--text-pri);
+  display: flex; align-items: center; gap: 8px;
+  opacity: 0; transition: all 0.25s; z-index: 999; white-space: nowrap;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { border-color: rgba(34,197,94,0.4); }
+.toast.warn { border-color: rgba(255,186,13,0.4); }
+.toast.error { border-color: rgba(239,68,68,0.4); }
+.toast-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* ── Internal notes sidebar ─────────────────────────── */
+.review-notes-panel {
+  position: fixed; right: 0; top: var(--topbar-h); bottom: 0;
+  width: 300px; background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%); transition: transform 0.25s ease;
+  z-index: 40; display: flex; flex-direction: column;
+}
+.review-notes-panel.open { transform: translateX(0); }
+.notes-panel-header {
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.notes-panel-title { font-size: 13px; font-weight: 700; color: var(--text-pri); }
+.notes-close-btn {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.notes-scroll { flex: 1; overflow-y: auto; padding: 16px; }
+.note-item { margin-bottom: 14px; }
+.note-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.note-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+}
+.note-author { font-size: 12px; font-weight: 600; color: var(--text-pri); }
+.note-time { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+.note-body {
+  font-size: 13px; color: var(--text-sec); line-height: 1.55;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 10px 12px;
+}
+.notes-input-area { padding: 14px 16px; border-top: 1px solid var(--border); }
+.notes-input {
+  width: 100%; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 10px 12px;
+  font-size: 13px; color: var(--text-pri); font-family: var(--font);
+  resize: none; outline: none; min-height: 70px; box-sizing: border-box;
+}
+.notes-input:focus { border-color: rgba(127,33,255,0.4); }
+.notes-input::placeholder { color: var(--text-dim); }
+.notes-send-btn {
+  margin-top: 8px; width: 100%; padding: 8px;
+  background: rgba(127,33,255,0.15); border: 1px solid rgba(127,33,255,0.3);
+  border-radius: var(--r-sm); color: var(--purple-l); font-size: 12px;
+  font-weight: 600; cursor: pointer; font-family: var(--font);
+  transition: all 0.15s;
+}
+.notes-send-btn:hover { background: rgba(127,33,255,0.25); }
+
+/* ── Escalation banner ───────────────────────────────── */
+.escalation-banner {
+  padding: 12px 20px;
+  background: rgba(239,68,68,0.07); border-bottom: 1px solid rgba(239,68,68,0.2);
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.esc-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.esc-text { flex: 1; }
+.esc-title { font-size: 13px; font-weight: 700; color: #ef4444; }
+.esc-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.esc-chain {
+  display: flex; align-items: center; gap: 4px;
+}
+.esc-step {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--text-muted);
+}
+.esc-step-avatar {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700;
+}
+.esc-arrow { color: var(--text-dim); font-size: 10px; }
+
+/* ── Review header (below topbar) ───────────────────── */
+.review-detail-header { padding: 0 20px 16px; padding-top: 16px; }
+.review-email-subject { font-size: 17px; font-weight: 700; color: var(--text-pri); letter-spacing: -0.02em; margin-bottom: 8px; line-height: 1.35; }
+.review-email-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ── Approved state overlay ──────────────────────────── */
+.approved-overlay {
+  position: fixed; inset: 0; background: rgba(10,10,10,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.approved-overlay.show { opacity: 1; pointer-events: all; }
+.approved-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 40px; text-align: center; max-width: 380px;
+  transform: translateY(20px); transition: transform 0.3s;
+  box-shadow: 0 0 60px rgba(127,33,255,0.15);
+}
+.approved-overlay.show .approved-card { transform: translateY(0); }
+.approved-check {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 20px;
+  background: rgba(34,197,94,0.12); border: 2px solid rgba(34,197,94,0.3);
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.approved-title { font-size: 20px; font-weight: 700; color: var(--text-pri); margin-bottom: 8px; }
+.approved-sub { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px; }
+.approved-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* ── Responsive (narrow screen) ─────────────────────── */
+@media (max-width: 900px) {
+  .review-body { grid-template-columns: 1fr; }
+  .review-col:first-child { max-height: 45vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Approved overlay ───────────────────── -->
+<div class="approved-overlay" id="approvedOverlay">
+  <div class="approved-card">
+    <div class="approved-check">✓</div>
+    <div class="approved-title">Draft Approved</div>
+    <div class="approved-sub" id="approvedSubtext">The reply has been approved and queued for sending via Perpolis OTC client services.</div>
+    <div class="approved-actions">
+      <a href="inbox.html" class="btn-edit-draft">Back to Inbox</a>
+      <a href="dashboard.html" class="btn-approve-send" style="text-decoration:none;">Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast notification ─────────────────── -->
+<div class="toast" id="toast">
+  <div class="toast-dot" id="toastDot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- ── Notes panel ───────────────────────── -->
+<div class="review-notes-panel" id="notesPanel">
+  <div class="notes-panel-header">
+    <span class="notes-panel-title">Internal Notes</span>
+    <button class="notes-close-btn" onclick="toggleNotes()">✕</button>
+  </div>
+  <div class="notes-scroll" id="notesScroll">
+    <div class="note-item">
+      <div class="note-header">
+        <div class="note-avatar" style="background:rgba(255,86,157,0.15);color:#FF569D;">RD</div>
+        <span class="note-author">Ronnie David</span>
+        <span class="note-time">09:30</span>
+      </div>
+      <div class="note-body">High-value prospect. Quantum Capital is well-known in the Toronto market. Prioritise response before 11am.</div>
+    </div>
+    <div class="note-item">
+      <div class="note-header">
+        <div class="note-avatar" style="background:rgba(59,130,246,0.15);color:#3b82f6;">MA</div>
+        <span class="note-author">Mark Antidormi</span>
+        <span class="note-time">09:45</span>
+      </div>
+      <div class="note-body">KYC will be required before any trade. T+1 settlement is achievable but confirm with ops team first.</div>
+    </div>
+  </div>
+  <div class="notes-input-area">
+    <textarea class="notes-input" id="noteInput" placeholder="Add an internal note…" rows="3"></textarea>
+    <button class="notes-send-btn" onclick="addNote()">Add Note</button>
+  </div>
+</div>
+
+<!-- ── Main shell ─────────────────────────── -->
+<div class="review-shell">
+
+  <!-- Top bar -->
+  <div class="review-topbar">
+    <div class="review-topbar-left">
+      <a href="dashboard.html" class="review-logo">
+        <div style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:rgba(127,33,255,0.12);border:1px solid rgba(127,33,255,0.3);">
+          <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
+            <defs>
+              <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#7F21FF"/>
+                <stop offset="55%" stop-color="#FF569D"/>
+                <stop offset="100%" stop-color="#FFBA0D"/>
+              </linearGradient>
+            </defs>
+            <text x="7" y="37" font-family="Satoshi,Arial,sans-serif" font-weight="900" font-size="34" fill="url(#rg)">R</text>
+          </svg>
+        </div>
+        <span class="review-logo-text">LUNAR MAIL</span>
+      </a>
+      <div class="review-divider"></div>
+      <div class="review-breadcrumb">
+        <a href="inbox.html">Inbox</a>
+        <span class="review-breadcrumb-sep">›</span>
+        <span class="review-breadcrumb-current" id="breadcrumbSubject">Email Review</span>
+      </div>
+    </div>
+    <div class="review-topbar-right">
+      <div class="review-meta-pill" id="mailboxPill">
+        <div class="review-meta-dot" style="background:#7F21FF;"></div>
+        <span id="mailboxLabel">clientservice@perpolis.ca</span>
+      </div>
+      <button class="btn-flag" id="topFlagBtn" onclick="flagEmail()" title="Flag for review">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 2v12M3 2h9l-2.5 4.5L12 11H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Flag
+      </button>
+      <button class="btn-edit-draft" id="notesToggleBtn" onclick="toggleNotes()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 12V14h2l7-7-2-2-7 7zM13.7 4.3a1 1 0 000-1.4l-1.6-1.6a1 1 0 00-1.4 0l-1.1 1.1 3 3 1.1-1.1z" fill="currentColor"/></svg>
+        Notes
+      </button>
+      <div class="reviewer-assign" id="reviewerPill" onclick="cycleDemoReviewer()" title="Assigned reviewer">
+        <div class="reviewer-assign-avatar" id="reviewerAvatar" style="background:rgba(255,86,157,0.15);color:#FF569D;">RD</div>
+        <span id="reviewerName">Ronnie David</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Escalation banner (shown for escalated emails) -->
+  <div class="escalation-banner" id="escalationBanner" style="display:none;">
+    <div class="esc-icon">⚠</div>
+    <div class="esc-text">
+      <div class="esc-title">Compliance Escalation Active — 26h</div>
+      <div class="esc-sub">AML query escalated to Mark Antidormi (Compliance Lead). AI draft withheld. Do not reply without compliance sign-off.</div>
+    </div>
+    <div class="esc-chain">
+      <div class="esc-step">
+        <div class="esc-step-avatar" style="background:rgba(34,197,94,0.15);color:#22c55e;">EL</div>
+        Elton
+      </div>
+      <span class="esc-arrow">→</span>
+      <div class="esc-step">
+        <div class="esc-step-avatar" style="background:rgba(59,130,246,0.15);color:#3b82f6;">MA</div>
+        Mark
+      </div>
+      <span class="esc-arrow">→</span>
+      <div class="esc-step">
+        <div class="esc-step-avatar" style="background:rgba(107,114,128,0.2);color:#9ca3af;">JY</div>
+        Backup
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column body -->
+  <div class="review-body" id="reviewBody">
+
+    <!-- LEFT: Original Email -->
+    <div class="review-col">
+      <div class="review-col-header">
+        <div class="review-col-title">
+          <div class="review-col-dot" style="background:#6b7280;"></div>
+          Original Email
+        </div>
+        <span class="review-col-badge" id="categoryBadge" style="background:rgba(127,33,255,0.12);color:#c4b5fd;border:1px solid rgba(127,33,255,0.2);">Prospect Inquiry</span>
+      </div>
+      <div class="review-col-scroll">
+
+        <!-- Sender -->
+        <div class="email-sender-row">
+          <div class="email-avatar-lg" id="senderAvatar" style="background:rgba(127,33,255,0.15);color:#c4b5fd;">DC</div>
+          <div class="email-sender-info">
+            <div class="email-sender-name" id="senderName">David Chen</div>
+            <div class="email-sender-addr" id="senderAddr">david.chen@quantumcap.ca</div>
+          </div>
+        </div>
+
+        <!-- Subject + Meta -->
+        <div class="email-subject-lg" id="emailSubject">OTC Bitcoin Purchase — 50 BTC Inquiry</div>
+        <div class="email-meta-row">
+          <span class="badge-status badge-pending" id="statusBadge">Pending Review</span>
+          <span class="badge-priority badge-priority-high" id="priorityBadge">High Priority</span>
+          <span style="font-size:12px;color:var(--text-dim);" id="timeLabel">Today, 09:14 · 2h ago</span>
+        </div>
+
+        <!-- Thread label -->
+        <div class="email-thread-label">Email Thread</div>
+
+        <!-- Body -->
+        <div class="email-body-text" id="emailBody">Loading email content…</div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: AI Draft -->
+    <div class="review-col">
+      <div class="review-col-header">
+        <div class="review-col-title">
+          <div class="review-col-dot" style="background:var(--pink);"></div>
+          AI Draft Reply
+        </div>
+        <span class="review-col-badge" id="confidenceBadge" style="background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.2);">94% Confidence</span>
+      </div>
+      <div class="review-col-scroll">
+
+        <!-- Confidence ring -->
+        <div class="ai-confidence-bar" id="confidenceBar">
+          <div class="ai-conf-ring">
+            <svg viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" stroke="rgba(255,255,255,0.06)" stroke-width="4" fill="none"/>
+              <circle cx="22" cy="22" r="18" stroke="url(#confGrad)" stroke-width="4" fill="none"
+                stroke-dasharray="113" stroke-dashoffset="7" stroke-linecap="round" id="confArc"/>
+              <defs>
+                <linearGradient id="confGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#7F21FF"/>
+                  <stop offset="100%" stop-color="#FF569D"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="ai-conf-ring-label" id="confRingLabel">94%</div>
+          </div>
+          <div class="ai-conf-details">
+            <div class="ai-conf-score" id="confScoreText">High Confidence</div>
+            <div class="ai-conf-desc" id="confDescText">Claude has generated a strong draft. Review before approving.</div>
+          </div>
+        </div>
+
+        <!-- Notice banners -->
+        <div class="ai-draft-notice info" id="draftInfoNotice">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0;margin-top:1px;"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7v4M8 5.5h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Zero-send policy active — this draft is held for your review. No email will be sent until you approve.</span>
+        </div>
+
+        <!-- Draft content -->
+        <div class="draft-editor" id="draftEditor" contenteditable="false">Loading draft…</div>
+        <div class="draft-toolbar" id="draftToolbar" style="display:none;">
+          <button class="draft-tool-btn" onclick="formatText('bold')"><b>B</b></button>
+          <button class="draft-tool-btn" onclick="formatText('italic')"><i>I</i></button>
+          <button class="draft-tool-btn" onclick="formatText('underline')"><u>U</u></button>
+          <div class="draft-tool-spacer"></div>
+          <span class="draft-char-count" id="charCount">0 chars</span>
+        </div>
+
+        <!-- Regenerate hint -->
+        <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn-edit-draft" onclick="regenDraft()" style="font-size:12px;padding:7px 14px;">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;"><path d="M14 8A6 6 0 112 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Regenerate Draft
+          </button>
+          <button class="btn-edit-draft" onclick="copyDraft()" style="font-size:12px;padding:7px 14px;" id="copyBtn">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>
+            Copy Draft
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /review-body -->
+
+  <!-- Action footer (spans full width) -->
+  <div class="review-footer">
+    <div class="review-footer-left">
+      <button class="btn-approve-send" id="approveSendBtn" onclick="approveSend()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Approve &amp; Send
+      </button>
+      <button class="btn-edit-draft" id="editDraftBtn" onclick="toggleEdit()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 12V14h2l7-7-2-2-7 7zM13.7 4.3a1 1 0 000-1.4l-1.6-1.6a1 1 0 00-1.4 0l-1.1 1.1 3 3 1.1-1.1z" fill="currentColor"/></svg>
+        Edit Draft
+      </button>
+    </div>
+    <div class="review-footer-right">
+      <button class="btn-flag" id="flagBtn" onclick="flagEmail()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 2v12M3 2h9l-2.5 4.5L12 11H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Flag
+      </button>
+      <button class="btn-archive" onclick="archiveEmail()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 4h12v1.5a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM3 6.5h10v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7z" stroke="currentColor" stroke-width="1.3"/><path d="M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Archive
+      </button>
+      <a href="inbox.html" class="btn-archive" style="text-decoration:none;">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to Inbox
+      </a>
+    </div>
+  </div>
+
+</div><!-- /review-shell -->
+
+<script src="js/app.js"></script>
+<script>
+/* ─────────────────────────────────────────────
+   Email Review Page Logic
+   ───────────────────────────────────────────── */
+
+// Load email from URL param or default to em-001
+const params   = new URLSearchParams(window.location.search);
+const emailId  = params.get('id') || 'em-001';
+const email    = EMAILS.find(e => e.id === emailId) || EMAILS[0];
+
+// ── Reviewer cycle (demo) ───────────────────
+const REVIEWERS = ['ron', 'elton', 'mark'];
+let reviewerIdx = 0;
+
+function cycleDemoReviewer() {
+  reviewerIdx = (reviewerIdx + 1) % REVIEWERS.length;
+  const u = USERS[REVIEWERS[reviewerIdx]];
+  document.getElementById('reviewerAvatar').textContent = u.initials;
+  document.getElementById('reviewerAvatar').style.background = u.color + '22';
+  document.getElementById('reviewerAvatar').style.color = u.color;
+  document.getElementById('reviewerName').textContent = u.name.split(' ')[0];
+  showToast('Reviewer assigned to ' + u.name, 'info');
+}
+
+// ── Populate page ───────────────────────────
+function populatePage() {
+  // Breadcrumb
+  document.getElementById('breadcrumbSubject').textContent = email.subject;
+  document.title = 'Review: ' + email.subject.slice(0, 40) + '… — Lunar Mail';
+
+  // Subject & meta
+  document.getElementById('emailSubject').textContent = email.subject;
+
+  // Sender
+  const initials = email.from_name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('senderAvatar').textContent = initials;
+  document.getElementById('senderAvatar').style.background = (email.avatarColor || '#7F21FF') + '22';
+  document.getElementById('senderAvatar').style.color = email.avatarColor || '#7F21FF';
+  document.getElementById('senderName').textContent = email.from_name;
+  document.getElementById('senderAddr').textContent = email.from_email;
+
+  // Status badge
+  const statusEl = document.getElementById('statusBadge');
+  statusEl.className = 'badge-status ' + statusBadgeClass(email.status);
+  statusEl.textContent = { pending: 'Pending Review', draft: 'Draft Ready', escalated: 'Escalated', approved: 'Approved', archived: 'Archived' }[email.status] || email.status;
+
+  // Priority badge
+  const prioEl = document.getElementById('priorityBadge');
+  prioEl.className = 'badge-priority badge-priority-' + email.priority;
+  prioEl.textContent = email.priority.charAt(0).toUpperCase() + email.priority.slice(1) + ' Priority';
+
+  // Time
+  document.getElementById('timeLabel').textContent = 'Today, ' + (email.time || '—') + ' · ' + (email.timeAgo || '');
+
+  // Category badge
+  const catEl = document.getElementById('categoryBadge');
+  catEl.textContent = categoryLabel(email.category);
+  catEl.className = 'review-col-badge ' + categoryBadgeClass(email.category);
+
+  // Mailbox pill
+  const mb = MAILBOXES.find(m => m.id === email.mailbox);
+  if (mb) {
+    document.getElementById('mailboxPill').querySelector('.review-meta-dot').style.background = mb.color;
+    document.getElementById('mailboxLabel').textContent = mb.email;
+  }
+
+  // Email body
+  document.getElementById('emailBody').textContent = email.body || 'No content.';
+
+  // AI Draft
+  const draft = email.aiDraft || 'No draft available.';
+  document.getElementById('draftEditor').textContent = draft;
+
+  // Confidence
+  const conf = email.aiConfidence || '—';
+  document.getElementById('confidenceBadge').textContent = conf === '—' ? 'N/A' : conf + ' Confidence';
+  document.getElementById('confRingLabel').textContent = conf;
+
+  const confNum = parseInt(conf);
+  if (!isNaN(confNum)) {
+    // Update ring (circumference = 2π×18 ≈ 113)
+    const offset = 113 - (113 * confNum / 100);
+    document.getElementById('confArc').setAttribute('stroke-dashoffset', offset.toFixed(1));
+    document.getElementById('confidenceBadge').style.background = confNum >= 90
+      ? 'rgba(34,197,94,0.1)' : confNum >= 70 ? 'rgba(255,186,13,0.08)' : 'rgba(239,68,68,0.08)';
+    document.getElementById('confidenceBadge').style.color = confNum >= 90 ? '#4ade80' : confNum >= 70 ? '#FFBA0D' : '#f87171';
+    document.getElementById('confidenceBadge').style.border = '1px solid ' + (confNum >= 90 ? 'rgba(34,197,94,0.2)' : confNum >= 70 ? 'rgba(255,186,13,0.2)' : 'rgba(239,68,68,0.2)');
+    document.getElementById('confScoreText').textContent = confNum >= 90 ? 'High Confidence' : confNum >= 70 ? 'Medium Confidence' : 'Low Confidence';
+    document.getElementById('confDescText').textContent = confNum >= 90
+      ? 'Claude has generated a strong draft. Review before approving.'
+      : confNum >= 70
+        ? 'Review carefully — some fields may need manual adjustment.'
+        : 'Draft requires significant review. Consider rewriting.';
+  } else {
+    // Withheld / escalated
+    document.getElementById('confArc').setAttribute('stroke-dashoffset', 113);
+    document.getElementById('confScoreText').textContent = 'Draft Withheld';
+    document.getElementById('confDescText').textContent = 'This email is flagged for compliance review.';
+  }
+
+  // Special notices
+  if (email.flagged || email.status === 'escalated') {
+    document.getElementById('escalationBanner').style.display = 'flex';
+    document.getElementById('draftInfoNotice').className = 'ai-draft-notice danger';
+    document.getElementById('draftInfoNotice').innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0;margin-top:1px;"><path d="M8 2L1 13h14L8 2zm0 4v4M8 12h.01" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>⚠ Compliance escalation — AI draft withheld. This email must be handled directly by the compliance team.</span>`;
+    document.getElementById('approveSendBtn').disabled = true;
+    document.getElementById('approveSendBtn').style.opacity = '0.4';
+    document.getElementById('approveSendBtn').style.cursor = 'not-allowed';
+    document.getElementById('approveSendBtn').title = 'Approval blocked: compliance escalation active';
+  }
+
+  if (email.note) {
+    const noteDiv = document.createElement('div');
+    noteDiv.className = 'ai-draft-notice warn';
+    noteDiv.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px;"><path d="M8 2L1 13h14L8 2zm0 4v4M8 12h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>${email.note}</span>`;
+    document.getElementById('draftEditor').parentNode.insertBefore(noteDiv, document.getElementById('draftEditor'));
+  }
+
+  if (email.status === 'archived') {
+    document.getElementById('approveSendBtn').disabled = true;
+    document.getElementById('approveSendBtn').style.opacity = '0.4';
+  }
+}
+
+// ── Edit toggle ─────────────────────────────
+let isEditing = false;
+function toggleEdit() {
+  isEditing = !isEditing;
+  const editor = document.getElementById('draftEditor');
+  const btn = document.getElementById('editDraftBtn');
+  const toolbar = document.getElementById('draftToolbar');
+
+  editor.contentEditable = isEditing ? 'true' : 'false';
+  toolbar.style.display = isEditing ? 'flex' : 'none';
+  btn.classList.toggle('active', isEditing);
+  btn.innerHTML = isEditing
+    ? `<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Save Edits`
+    : `<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 12V14h2l7-7-2-2-7 7zM13.7 4.3a1 1 0 000-1.4l-1.6-1.6a1 1 0 00-1.4 0l-1.1 1.1 3 3 1.1-1.1z" fill="currentColor"/></svg> Edit Draft`;
+
+  if (isEditing) {
+    editor.focus();
+    showToast('Draft editing enabled', 'info');
+    updateCharCount();
+    editor.addEventListener('input', updateCharCount);
+  } else {
+    showToast('Edits saved', 'success');
+  }
+}
+
+function updateCharCount() {
+  const len = document.getElementById('draftEditor').textContent.length;
+  document.getElementById('charCount').textContent = len.toLocaleString() + ' chars';
+}
+
+function formatText(cmd) { document.execCommand(cmd, false, null); }
+
+// ── Approve & send ──────────────────────────
+function approveSend() {
+  const mb = MAILBOXES.find(m => m.id === email.mailbox);
+  document.getElementById('approvedSubtext').textContent =
+    'The reply has been approved and queued for sending via ' + (mb ? mb.company : 'client services') + '.';
+  document.getElementById('approvedOverlay').classList.add('show');
+}
+
+// ── Flag ────────────────────────────────────
+let isFlagged = email.flagged || false;
+function flagEmail() {
+  isFlagged = !isFlagged;
+  const btns = [document.getElementById('flagBtn'), document.getElementById('topFlagBtn')];
+  btns.forEach(b => b && b.classList.toggle('active', isFlagged));
+  showToast(isFlagged ? 'Flagged for compliance review' : 'Flag removed', isFlagged ? 'warn' : 'info');
+}
+
+// ── Archive ─────────────────────────────────
+function archiveEmail() {
+  showToast('Email archived', 'info');
+  setTimeout(() => { window.location.href = 'inbox.html'; }, 1200);
+}
+
+// ── Regenerate ──────────────────────────────
+let regenCount = 0;
+const REGEN_MSGS = [
+  'Regenerating draft with Claude…',
+  'Draft regenerated successfully',
+  'Alternative version generated'
+];
+function regenDraft() {
+  if (email.flagged) { showToast('Cannot regenerate — compliance escalation active', 'error'); return; }
+  const btn = event.target.closest('button');
+  btn.textContent = '⟳ Generating…';
+  btn.disabled = true;
+  setTimeout(() => {
+    regenCount = (regenCount + 1) % 2;
+    if (regenCount === 1 && email.aiDraft) {
+      document.getElementById('draftEditor').textContent = email.aiDraft.replace('Best regards', 'Kind regards') + '\n\n[Alternative draft — same intent, varied tone]';
+    }
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M14 8A6 6 0 112 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Regenerate Draft`;
+    btn.disabled = false;
+    showToast(REGEN_MSGS[1], 'success');
+  }, 1600);
+}
+
+// ── Copy draft ──────────────────────────────
+function copyDraft() {
+  const text = document.getElementById('draftEditor').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('Draft copied to clipboard', 'success'));
+  } else {
+    showToast('Copy not available in this browser', 'warn');
+  }
+}
+
+// ── Notes panel ─────────────────────────────
+let notesOpen = false;
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open', notesOpen);
+  document.getElementById('notesToggleBtn').classList.toggle('active', notesOpen);
+}
+
+function addNote() {
+  const input = document.getElementById('noteInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const u = USERS.ron;
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const html = `
+    <div class="note-item" style="animation: fadeUp 0.25s ease;">
+      <div class="note-header">
+        <div class="note-avatar" style="background:${u.color}22;color:${u.color};">${u.initials}</div>
+        <span class="note-author">${u.name}</span>
+        <span class="note-time">${timeStr}</span>
+      </div>
+      <div class="note-body">${val.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    </div>`;
+  document.getElementById('notesScroll').insertAdjacentHTML('beforeend', html);
+  input.value = '';
+  document.getElementById('notesScroll').scrollTop = 9999;
+  showToast('Note added', 'success');
+}
+
+// ── Toast helper ────────────────────────────
+let toastTimer;
+function showToast(msg, type = 'info') {
+  clearTimeout(toastTimer);
+  const toast = document.getElementById('toast');
+  const dot = document.getElementById('toastDot');
+  const msgEl = document.getElementById('toastMsg');
+  const colors = { success: '#22c55e', warn: '#FFBA0D', error: '#ef4444', info: '#7F21FF' };
+  dot.style.background = colors[type] || colors.info;
+  msgEl.textContent = msg;
+  toast.className = 'toast show ' + type;
+  toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2800);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey) {
+    if (e.key === 'Enter') { e.preventDefault(); approveSend(); }
+    if (e.key === 'e') { e.preventDefault(); toggleEdit(); }
+    if (e.key === 'f') { e.preventDefault(); flagEmail(); }
+    if (e.key === '/') { e.preventDefault(); toggleNotes(); }
+  }
+  if (e.key === 'Escape') {
+    if (notesOpen) toggleNotes();
+    document.getElementById('approvedOverlay').classList.remove('show');
+  }
+});
+
+// Keyboard shortcuts hint (bottom of footer)
+const footer = document.querySelector('.review-footer');
+const hintEl = document.createElement('div');
+hintEl.style.cssText = 'font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:4px;';
+hintEl.innerHTML = '<kbd style="padding:2px 5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;font-size:9px;">⌘↵</kbd> Approve &nbsp; <kbd style="padding:2px 5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;font-size:9px;">⌘E</kbd> Edit &nbsp; <kbd style="padding:2px 5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;font-size:9px;">⌘F</kbd> Flag';
+document.querySelector('.review-footer-right').prepend(hintEl);
+
+// ── Init ────────────────────────────────────
+populatePage();
+</script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lunar Mail — Compliance Queue</title>
+<link rel="stylesheet" href="css/main.css"/>
+<style>
+  .comp-card { background:var(--bg-surface); border:1px solid rgba(239,68,68,0.2); border-radius:var(--r-xl); padding:20px 22px; margin-bottom:14px; position:relative; overflow:hidden; transition:all var(--base) ease; }
+  .comp-card::before { content:''; position:absolute; left:0;top:0;bottom:0; width:3px; background:var(--error); }
+  .comp-card:hover { border-color:rgba(239,68,68,0.4); box-shadow:0 0 20px rgba(239,68,68,0.08); }
+  .comp-card.warning { border-color:rgba(245,158,11,0.3); }
+  .comp-card.warning::before { background:var(--warning); }
+  .comp-card.warning:hover { border-color:rgba(245,158,11,0.5); box-shadow:0 0 20px rgba(245,158,11,0.08); }
+  .comp-header { display:flex; align-items:flex-start; gap:14px; margin-bottom:14px; }
+  .comp-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:white; flex-shrink:0; }
+  .comp-meta { flex:1; }
+  .comp-subject { font-size:15px; font-weight:700; margin-bottom:4px; }
+  .comp-from { font-size:12.5px; color:var(--text-sec); }
+  .comp-company { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .comp-timer { display:flex; align-items:center; gap:8px; margin-top:14px; padding:10px 14px; background:rgba(239,68,68,0.06); border-radius:var(--r-md); }
+  .comp-timer.warn { background:rgba(245,158,11,0.06); }
+  .timer-num { font-size:22px; font-weight:700; color:var(--error); font-family:var(--mono); }
+  .timer-num.warn { color:var(--warning); }
+  .timer-label { font-size:11px; color:var(--text-sec); line-height:1.4; }
+  .progress-bar { height:5px; background:var(--border); border-radius:var(--r-full); margin:10px 0 0; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:var(--r-full); }
+  .escalation-chain { display:flex; flex-direction:column; gap:6px; margin:14px 0; }
+  .chain-step { display:flex; align-items:center; gap:10px; font-size:12.5px; }
+  .chain-icon { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+  .chain-done { background:rgba(34,197,94,0.2); color:#86efac; }
+  .chain-active { background:rgba(239,68,68,0.2); color:#fca5a5; animation:pulse-glow 2s infinite; }
+  .chain-pending { background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--border); }
+  .chain-text { color:var(--text-sec); }
+  .chain-time { margin-left:auto; font-size:11px; color:var(--text-muted); }
+  .comp-actions { display:flex; gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; }
+  .resolved-card { background:rgba(34,197,94,0.05); border:1px solid rgba(34,197,94,0.15); border-radius:var(--r-xl); padding:16px 20px; margin-bottom:10px; display:flex; align-items:center; gap:14px; }
+  .policy-box { background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--r-xl); padding:20px 22px; }
+  .policy-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .policy-row:last-child { border-bottom:none; }
+</style>
+</head>
+<body>
+<div class="bg-orb orb-purple"></div>
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+          <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7F21FF"/><stop offset="55%" stop-color="#FF569D"/><stop offset="100%" stop-color="#FFBA0D"/></linearGradient></defs>
+          <rect width="48" height="48" rx="10" fill="rgba(127,33,255,0.12)"/>
+          <text x="8" y="36" font-family="Satoshi,Arial,sans-serif" font-weight="900" font-size="32" fill="url(#lg)">R</text>
+        </svg>
+      </div>
+      <div class="logo-wordmark"><div class="logo-product">Lunar Mail</div><div class="logo-by">by Lunar Rails</div></div>
+    </div>
+    <div class="sidebar-section">Navigation</div>
+    <nav>
+      <div class="nav-item" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">◼</span>Dashboard</div>
+      <div class="nav-item" data-page="inbox" onclick="navigate('inbox')"><span class="nav-icon">📥</span>Inbox<span class="nav-badge">8</span></div>
+      <div class="nav-item active" data-page="compliance" onclick="navigate('compliance')"><span class="nav-icon">🔒</span>Compliance Queue<span class="nav-badge red">2</span></div>
+      <div class="nav-item" data-page="admin" onclick="navigate('admin')"><span class="nav-icon">⚙</span>Admin Panel</div>
+    </nav>
+    <div class="sidebar-section" style="margin-top:8px;">Companies</div>
+    <div class="company-filter">
+      <button class="company-btn active"><span class="company-dot" style="background:linear-gradient(135deg,#7F21FF,#FF569D);"></span>All Companies</button>
+      <button class="company-btn"><span class="company-dot" style="background:#7F21FF;"></span>Perpolis OTC</button>
+      <button class="company-btn"><span class="company-dot" style="background:#22C55E;"></span>40 Acres</button>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,#FF569D,#7F21FF);">RD</div>
+      <div class="user-info"><div class="user-name" id="sidebar-user-name">Ronnie David</div><div class="user-role" id="sidebar-user-role">Super Admin</div></div>
+      <button class="role-switcher" onclick="openRoleSwitcher()">⇅</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="demo-banner">
+      <span class="demo-badge">Demo</span>
+      <span>Phase 1 Prototype · <span id="demo-user-label">Viewing as: Ronnie David (Super Admin)</span></span>
+    </div>
+    <div class="topbar">
+      <div class="topbar-title" style="color:#fca5a5;">🔒 Compliance Queue</div>
+      <div class="topbar-actions">
+        <span class="badge badge-escalated" style="font-size:12px;padding:5px 14px;">2 Active Alerts</span>
+        <span class="badge badge-approved">3 Resolved this week</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;">
+
+        <!-- LEFT: Active Alerts -->
+        <div>
+          <div class="section-label" style="color:#fca5a5;">🔴 Active — Requires Immediate Action</div>
+
+          <!-- Alert 1: CRITICAL - 26h -->
+          <div class="comp-card">
+            <div class="comp-header">
+              <div class="comp-avatar" style="background:#EF4444;">RT</div>
+              <div class="comp-meta">
+                <div class="comp-subject">AML Query — Large Transaction Monitoring (>CAD $500K)</div>
+                <div class="comp-from">From: Reginald Thompson · r.thompson@fincompliance.org</div>
+                <div class="comp-company">📬 compliance@perpolis.ca · Perpolis OTC · Received: Yesterday 8:14 AM</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+                <span class="badge badge-escalated">🔴 Critical</span>
+                <span class="badge badge-escalated">Escalated</span>
+              </div>
+            </div>
+
+            <div class="comp-timer">
+              <div>
+                <div class="timer-num">26h</div>
+                <div class="timer-label">Since received</div>
+              </div>
+              <div style="flex:1;padding-left:14px;border-left:1px solid rgba(239,68,68,0.2);">
+                <div style="font-size:12px;font-weight:600;color:#fca5a5;margin-bottom:4px;">⚠ Past 24h reminder threshold</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Auto-escalation to backups triggered in <strong style="color:#fca5a5;">22h</strong> (48h deadline, weekdays only)</div>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:54%;background:linear-gradient(90deg,var(--warning),var(--error));"></div>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">26h of 48h window used · Weekday hours only</div>
+
+            <div class="escalation-chain">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Escalation Chain</div>
+              <div class="chain-step"><div class="chain-icon chain-done">✓</div><span class="chain-text">Email received + AI classified</span><span class="chain-time">Yesterday 8:14 AM</span></div>
+              <div class="chain-step"><div class="chain-icon chain-done">✓</div><span class="chain-text">Slack @mark.antidormi notified + #perpolis-compliance channel</span><span class="chain-time">Yesterday 8:15 AM</span></div>
+              <div class="chain-step"><div class="chain-icon chain-done">✓</div><span class="chain-text">24h auto-reminder sent to Mark</span><span class="chain-time">Today 8:15 AM</span></div>
+              <div class="chain-step"><div class="chain-icon chain-active">!</div><span class="chain-text" style="color:#fca5a5;"><strong>Awaiting Mark's response</strong> — No action taken</span><span class="chain-time">Now</span></div>
+              <div class="chain-step"><div class="chain-icon chain-pending">⏳</div><span class="chain-text">48h auto-escalate → @jyoti @ashwini @shilpa @sherin</span><span class="chain-time">Tomorrow 8:14 AM</span></div>
+            </div>
+
+            <div class="comp-actions">
+              <button class="btn btn-danger btn-sm">🔒 Mark Resolved</button>
+              <button class="btn btn-secondary btn-sm" onclick="navigate('inbox')">View Email</button>
+              <button class="btn btn-ghost btn-sm">📢 Escalate Now</button>
+              <button class="btn btn-ghost btn-sm">💬 Add Note</button>
+            </div>
+          </div>
+
+          <!-- Alert 2: WARNING - 5h -->
+          <div class="comp-card warning">
+            <div class="comp-header">
+              <div class="comp-avatar" style="background:#FFBA0D;color:#0A0A0A;">SR</div>
+              <div class="comp-meta">
+                <div class="comp-subject">Regulatory Filing — Q1 2026 Declaration Deadline</div>
+                <div class="comp-from">From: Sofia Ruiz · compliance@40acres.pro</div>
+                <div class="comp-company">📬 compliance@40acres.pro · 40 Acres · Received: Today 5:22 AM</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+                <span class="badge badge-pending">⚠ Pending</span>
+              </div>
+            </div>
+
+            <div class="comp-timer warn">
+              <div>
+                <div class="timer-num warn">5h</div>
+                <div class="timer-label">Since received</div>
+              </div>
+              <div style="flex:1;padding-left:14px;border-left:1px solid rgba(245,158,11,0.2);">
+                <div style="font-size:12px;font-weight:600;color:#fcd34d;margin-bottom:4px;">Within 24h response window</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Reminder will be sent to <strong>Sofia</strong> in <strong style="color:#fcd34d;">19h</strong> if no action</div>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:10%;background:var(--warning);"></div>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">5h of 24h window used</div>
+
+            <div class="escalation-chain">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Escalation Chain</div>
+              <div class="chain-step"><div class="chain-icon chain-done">✓</div><span class="chain-text">Email received + AI classified</span><span class="chain-time">5:22 AM</span></div>
+              <div class="chain-step"><div class="chain-icon chain-active">→</div><span class="chain-text" style="color:#fcd34d;"><strong>Awaiting Sofia's review</strong></span><span class="chain-time">Now</span></div>
+              <div class="chain-step"><div class="chain-icon chain-pending">⏳</div><span class="chain-text">24h reminder → @sofia</span><span class="chain-time">Tomorrow 5:22 AM</span></div>
+              <div class="chain-step"><div class="chain-icon chain-pending">⏳</div><span class="chain-text">48h escalate → @elton @chris @ronnie</span><span class="chain-time">+2 days</span></div>
+            </div>
+
+            <div class="comp-actions">
+              <button class="btn btn-secondary btn-sm">✓ Mark Resolved</button>
+              <button class="btn btn-ghost btn-sm">View Email</button>
+              <button class="btn btn-ghost btn-sm">💬 Add Note</button>
+            </div>
+          </div>
+
+          <!-- Resolved this week -->
+          <div class="section-label" style="margin-top:24px;color:var(--success);">✅ Resolved This Week</div>
+          <div class="resolved-card">
+            <div style="font-size:20px;opacity:0.5;">✓</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:2px;">LP Quarterly Compliance Report — Perpolis</div>
+              <div style="font-size:12px;color:var(--text-muted);">Resolved by Mark Antidormi · Monday 2:14 PM · 6h response time</div>
+            </div>
+            <span class="badge badge-approved">Resolved</span>
+          </div>
+          <div class="resolved-card">
+            <div style="font-size:20px;opacity:0.5;">✓</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:2px;">FINTRAC Annual Filing Confirmation</div>
+              <div style="font-size:12px;color:var(--text-muted);">Resolved by Jyoti (backup) · Tuesday 11:30 AM · 3h response time</div>
+            </div>
+            <span class="badge badge-approved">Resolved</span>
+          </div>
+          <div class="resolved-card">
+            <div style="font-size:20px;opacity:0.5;">✓</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:2px;">KYC Verification — Institutional Client #P2891</div>
+              <div style="font-size:12px;color:var(--text-muted);">Resolved by Mark Antidormi · Wednesday 9:45 AM · 2h response time</div>
+            </div>
+            <span class="badge badge-approved">Resolved</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: Policy + Contacts -->
+        <div>
+          <div class="section-label">Escalation Policy</div>
+          <div class="policy-box" style="margin-bottom:16px;">
+            <div class="policy-row">
+              <span style="color:var(--text-muted);">Immediate</span>
+              <span style="font-size:12px;font-weight:600;">Tag + Slack DM</span>
+            </div>
+            <div class="policy-row">
+              <span style="color:var(--text-muted);">After 24h</span>
+              <span style="font-size:12px;font-weight:600;color:var(--warning);">Auto-reminder</span>
+            </div>
+            <div class="policy-row">
+              <span style="color:var(--text-muted);">After 48h</span>
+              <span style="font-size:12px;font-weight:600;color:var(--error);">Backup escalation</span>
+            </div>
+            <div class="policy-row">
+              <span style="color:var(--text-muted);">Weekends</span>
+              <span style="font-size:12px;font-weight:600;">Excluded from timer</span>
+            </div>
+          </div>
+
+          <div class="section-label">Compliance Contacts</div>
+          <div class="card-flat" style="margin-bottom:16px;">
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Perpolis OTC</div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:#3b82f6;">MA</div>
+                <div style="flex:1;"><div style="font-size:12.5px;font-weight:600;">Mark Antidormi</div><div style="font-size:10.5px;color:var(--text-muted);">Primary · 26h no response</div></div>
+                <span style="width:8px;height:8px;border-radius:50%;background:#EF4444;display:inline-block;animation:pulse-glow 2s infinite;"></span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:8px;">
+                <span class="badge badge-archived" style="font-size:10px;">Jyoti</span>
+                <span class="badge badge-archived" style="font-size:10px;">Ashwini</span>
+                <span class="badge badge-archived" style="font-size:10px;">Shilpa</span>
+                <span class="badge badge-archived" style="font-size:10px;">Sherin</span>
+              </div>
+              <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;">Backups notified in 22h if Mark doesn't respond</div>
+            </div>
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">40 Acres</div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+                <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:#3b82f6;">SF</div>
+                <div style="flex:1;"><div style="font-size:12.5px;font-weight:600;">Sofia</div><div style="font-size:10.5px;color:var(--text-muted);">Primary · Awaiting review</div></div>
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--warning);display:inline-block;"></span>
+              </div>
+              <div style="font-size:10.5px;color:var(--text-muted);padding-top:4px;">No backups assigned yet — fallback to Admin tier</div>
+            </div>
+          </div>
+
+          <div class="section-label">This Week — Stats</div>
+          <div class="card-flat">
+            <div class="policy-row"><span style="color:var(--text-muted);">Total Compliance Emails</span><span style="font-weight:700;">5</span></div>
+            <div class="policy-row"><span style="color:var(--text-muted);">Resolved On Time</span><span style="font-weight:700;color:var(--success);">3</span></div>
+            <div class="policy-row"><span style="color:var(--text-muted);">Currently Open</span><span style="font-weight:700;color:var(--error);">2</span></div>
+            <div class="policy-row"><span style="color:var(--text-muted);">Avg Response Time</span><span style="font-weight:700;">4.5h</span></div>
+            <div class="policy-row"><span style="color:var(--text-muted);">Escalated to Backups</span><span style="font-weight:700;">0</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/app.js"></script>
+</body>
+</html>

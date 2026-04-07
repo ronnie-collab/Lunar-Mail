@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lunar Mail — Admin Panel</title>
+<link rel="stylesheet" href="css/main.css"/>
+<style>
+  .admin-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; }
+  .admin-tab { padding:10px 18px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all var(--fast) ease; }
+  .admin-tab:hover { color:var(--text); }
+  .admin-tab.active { color:var(--text); border-bottom-color:var(--purple); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .user-row td { vertical-align:middle; }
+  .invite-box { background:rgba(127,33,255,0.06); border:1px solid rgba(127,33,255,0.2); border-radius:var(--r-xl); padding:20px 22px; margin-bottom:20px; }
+  .sso-step { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .sso-step:last-child { border-bottom:none; }
+  .step-num-badge { width:24px; height:24px; border-radius:50%; background:var(--grad); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white; flex-shrink:0; }
+</style>
+</head>
+<body>
+<div class="bg-orb orb-purple"></div>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+          <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7F21FF"/><stop offset="55%" stop-color="#FF569D"/><stop offset="100%" stop-color="#FFBA0D"/></linearGradient></defs>
+          <rect width="48" height="48" rx="10" fill="rgba(127,33,255,0.12)"/>
+          <text x="8" y="36" font-family="Satoshi,Arial,sans-serif" font-weight="900" font-size="32" fill="url(#lg)">R</text>
+        </svg>
+      </div>
+      <div class="logo-wordmark"><div class="logo-product">Lunar Mail</div><div class="logo-by">by Lunar Rails</div></div>
+    </div>
+    <div class="sidebar-section">Navigation</div>
+    <nav>
+      <div class="nav-item" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">◼</span>Dashboard</div>
+      <div class="nav-item" data-page="inbox" onclick="navigate('inbox')"><span class="nav-icon">📥</span>Inbox<span class="nav-badge">8</span></div>
+      <div class="nav-item" data-page="compliance" onclick="navigate('compliance')"><span class="nav-icon">🔒</span>Compliance Queue<span class="nav-badge red">2</span></div>
+      <div class="nav-item active" data-page="admin" onclick="navigate('admin')"><span class="nav-icon">⚙</span>Admin Panel</div>
+    </nav>
+    <div class="sidebar-section" style="margin-top:8px;">Companies</div>
+    <div class="company-filter">
+      <button class="company-btn active"><span class="company-dot" style="background:linear-gradient(135deg,#7F21FF,#FF569D);"></span>All Mailboxes</button>
+      <button class="company-btn"><span class="company-dot" style="background:#7F21FF;"></span>Perpolis OTC</button>
+      <button class="company-btn"><span class="company-dot" style="background:#22C55E;"></span>40 Acres</button>
+      <button class="company-btn"><span class="company-dot" style="background:#FFBA0D;"></span>Paidly Interactive</button>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,#FF569D,#7F21FF);">RD</div>
+      <div class="user-info"><div class="user-name" id="sidebar-user-name">Ronnie David</div><div class="user-role" id="sidebar-user-role">Super Admin</div></div>
+      <button class="role-switcher" onclick="openRoleSwitcher()">⇅</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="demo-banner">
+      <span class="demo-badge">Demo</span>
+      <span id="demo-user-label">Admin Panel — visible to Super Admin and Admin roles only</span>
+    </div>
+    <div class="topbar">
+      <div class="topbar-title grad-text">Admin Panel</div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm">+ Invite User</button>
+        <button class="btn btn-ghost btn-sm">Export Access Log</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- Tabs -->
+      <div class="admin-tabs">
+        <div class="admin-tab active" onclick="showTab('users',this)">👥 Users & Access</div>
+        <div class="admin-tab" onclick="showTab('sso',this)">🔑 Gmail SSO Setup</div>
+        <div class="admin-tab" onclick="showTab('mailboxes',this)">📬 Mailbox Config</div>
+        <div class="admin-tab" onclick="showTab('audit',this)">📋 Audit Log</div>
+      </div>
+
+      <!-- USERS TAB -->
+      <div class="tab-panel active" id="tab-users">
+        <div class="page-header" style="margin-bottom:16px;">
+          <div class="page-header-left">
+            <h1 style="font-size:17px;">Access Control Matrix</h1>
+            <p>13 users · 5 mailboxes · 3 companies · Last updated: April 7, 2026</p>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;border-radius:var(--r-xl);border:1px solid var(--border);">
+          <table class="access-matrix-table">
+            <thead>
+              <tr>
+                <th style="min-width:190px;">User</th>
+                <th style="min-width:130px;">Role</th>
+                <th style="text-align:center;min-width:90px;background:rgba(127,33,255,0.08);">clientservice<br>@perpolis.ca</th>
+                <th style="text-align:center;min-width:90px;background:rgba(127,33,255,0.08);">compliance<br>@perpolis.ca</th>
+                <th style="text-align:center;min-width:90px;background:rgba(34,197,94,0.06);">clientservice<br>@40acres.pro</th>
+                <th style="text-align:center;min-width:90px;background:rgba(34,197,94,0.06);">compliance<br>@40acres.pro</th>
+                <th style="text-align:center;min-width:100px;background:rgba(255,186,13,0.06);">clientservices<br>@paidlyinteractive</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="user-table"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
+          <span>★ Full (Super Admin)</span>
+          <span>● Full (Admin)</span>
+          <span>P Primary</span>
+          <span>✎ Edit+Draft</span>
+          <span>👁 Read Only</span>
+          <span>B Backup</span>
+          <span>— No Access</span>
+        </div>
+      </div>
+
+      <!-- SSO TAB -->
+      <div class="tab-panel" id="tab-sso">
+        <div class="invite-box">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="font-size:24px;">🔑</div>
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:3px;">Gmail SSO — Invite Flow</div>
+              <div style="font-size:13px;color:var(--text-sec);">All 13 users authenticate via their @lunarrails.io or authorised Google accounts. No passwords needed.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:20px;margin-bottom:20px;">
+          <div class="card-flat">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📋 Notion — Google SSO</div>
+            <div class="sso-step"><div class="step-num-badge">1</div><div style="font-size:13px;color:var(--text-sec);">Go to Notion workspace → Settings → Identity & Provisioning</div></div>
+            <div class="sso-step"><div class="step-num-badge">2</div><div style="font-size:13px;color:var(--text-sec);">Enable Google Workspace login, link lunarrails.io domain</div></div>
+            <div class="sso-step"><div class="step-num-badge">3</div><div style="font-size:13px;color:var(--text-sec);">Invite each user by email — they receive an invite link</div></div>
+            <div class="sso-step"><div class="step-num-badge">4</div><div style="font-size:13px;color:var(--text-sec);">User clicks → "Continue with Google" → auto-joined with correct role</div></div>
+            <div style="margin-top:12px;"><span class="badge badge-approved">✅ Native Google SSO — No extra cost</span></div>
+          </div>
+          <div class="card-flat">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px;">📧 Front — Google SSO</div>
+            <div class="sso-step"><div class="step-num-badge">1</div><div style="font-size:13px;color:var(--text-sec);">Front Settings → Company → Security → Enable SSO → Google</div></div>
+            <div class="sso-step"><div class="step-num-badge">2</div><div style="font-size:13px;color:var(--text-sec);">Authorise Front to connect to lunarrails.io Google Workspace</div></div>
+            <div class="sso-step"><div class="step-num-badge">3</div><div style="font-size:13px;color:var(--text-sec);">Create Teams: Perpolis, 40 Acres, Paidly (one per company)</div></div>
+            <div class="sso-step"><div class="step-num-badge">4</div><div style="font-size:13px;color:var(--text-sec);">Invite users to the correct Team → invite email auto-sent</div></div>
+            <div style="margin-top:12px;"><span class="badge badge-approved">✅ Supported on all paid plans</span></div>
+          </div>
+          <div class="card-flat">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px;">💬 Slack — User Mapping</div>
+            <div class="sso-step"><div class="step-num-badge">1</div><div style="font-size:13px;color:var(--text-sec);">Confirm all 13 users are on the Lunar Rails Slack workspace</div></div>
+            <div class="sso-step"><div class="step-num-badge">2</div><div style="font-size:13px;color:var(--text-sec);">Retrieve each user's Slack User ID for Make.com @mentions</div></div>
+            <div class="sso-step"><div class="step-num-badge">3</div><div style="font-size:13px;color:var(--text-sec);">Create company channels: #perpolis-compliance, #40acres-compliance</div></div>
+            <div class="sso-step"><div class="step-num-badge">4</div><div style="font-size:13px;color:var(--text-sec);">Provide Slack channel names to Ron for Make.com setup</div></div>
+            <div style="margin-top:12px;"><span class="badge badge-pending">⚠ Channel names TBC from Ron</span></div>
+          </div>
+          <div class="card-flat">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px;">🌐 Lunar Mail Portal — SSO (Phase 4)</div>
+            <div class="sso-step"><div class="step-num-badge">1</div><div style="font-size:13px;color:var(--text-sec);">Portal uses Google OAuth 2.0 restricted to lunarrails.io domain</div></div>
+            <div class="sso-step"><div class="step-num-badge">2</div><div style="font-size:13px;color:var(--text-sec);">User visits portal URL → "Sign in with Google" button</div></div>
+            <div class="sso-step"><div class="step-num-badge">3</div><div style="font-size:13px;color:var(--text-sec);">Google verifies account → portal loads correct role view automatically</div></div>
+            <div class="sso-step"><div class="step-num-badge">4</div><div style="font-size:13px;color:var(--text-sec);">No passwords or manual account creation — fully automatic</div></div>
+            <div style="margin-top:12px;"><span class="badge badge-draft">🔧 To implement in Phase 4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAILBOXES TAB -->
+      <div class="tab-panel" id="tab-mailboxes">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="card-flat" style="border-color:rgba(127,33,255,0.25);">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#7F21FF;"></div>
+              <div style="font-size:15px;font-weight:700;">clientservice@perpolis.ca</div>
+              <span class="badge badge-approved">Live — Phase 1</span>
+              <span class="badge badge-perpolis">Perpolis OTC</span>
+            </div>
+            <div class="grid-2" style="gap:10px;font-size:12.5px;color:var(--text-sec);">
+              <div>Make.com Blueprint: <strong style="color:var(--text);">EDRA_Make_Blueprint.json ✓</strong></div>
+              <div>Notion DB: <strong style="color:var(--text);">Live & seeded (7 emails)</strong></div>
+              <div>Front API: <strong style="color:#fcd34d;">Token needed</strong></div>
+              <div>Slack Webhook: <strong style="color:#fcd34d;">Channel name TBC</strong></div>
+              <div>Claude API: <strong style="color:#fcd34d;">Key needed</strong></div>
+              <div>Shadow Test: <strong style="color:#fcd34d;">Pending</strong></div>
+            </div>
+          </div>
+          <div class="card-flat" style="border-color:rgba(239,68,68,0.2);">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#EF4444;"></div>
+              <div style="font-size:15px;font-weight:700;">compliance@perpolis.ca</div>
+              <span class="badge badge-draft">Phase 2</span>
+              <span class="badge badge-perpolis">Perpolis OTC</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--text-muted);">Reuses Perpolis credentials. Main work: prompt tuning + stricter escalation logic. Est. setup: ~3–4h after Phase 1 live.</div>
+          </div>
+          <div class="card-flat" style="border-color:rgba(34,197,94,0.15);">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#22C55E;"></div>
+              <div style="font-size:15px;font-weight:700;">clientservice@40acres.pro</div>
+              <span class="badge badge-draft">Phase 3</span>
+              <span class="badge badge-acres">40 Acres</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--text-muted);">New Notion workspace + Make scenario. Needs ~10 sample 40 Acres emails for AI training. Est. setup: ~5–7h.</div>
+          </div>
+          <div class="card-flat" style="border-color:rgba(34,197,94,0.1);">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#10b981;"></div>
+              <div style="font-size:15px;font-weight:700;">compliance@40acres.pro</div>
+              <span class="badge badge-draft">Phase 3b</span>
+              <span class="badge badge-acres">40 Acres</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--text-muted);">Alongside Phase 3 — stricter escalation, Sofia as primary. No backup contacts defined yet.</div>
+          </div>
+          <div class="card-flat" style="border-color:rgba(255,186,13,0.15);">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#FFBA0D;"></div>
+              <div style="font-size:15px;font-weight:700;">clientservices@paidlyinteractive.tech</div>
+              <span class="badge badge-archived">Phase 4</span>
+              <span class="badge badge-paidly">Paidly Interactive</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--text-muted);">Access: Ronnie David + Admin tier only. New Notion workspace. Needs sample emails. Est. setup: ~4–6h.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG TAB -->
+      <div class="tab-panel" id="tab-audit">
+        <div class="card-flat">
+          <div class="timeline" id="audit-timeline"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+function showTab(tab, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// User table data
+const USER_MATRIX = [
+  { key:'ron',      ac:['★','★','★','★','★'] },
+  { key:'elton',    ac:['●','●','●','●','●'] },
+  { key:'chris',    ac:['●','●','●','●','●'] },
+  { key:'mark',     ac:['👁','P','—','—','—'] },
+  { key:'sofia',    ac:['—','—','👁','P','—'] },
+  { key:'jyoti',    ac:['👁','B','—','—','—'] },
+  { key:'ashwini',  ac:['👁','B','—','—','—'] },
+  { key:'shilpa',   ac:['👁','B','—','—','—'] },
+  { key:'sherin',   ac:['👁','B','—','—','—'] },
+  { key:'felipe',   ac:['✎','—','✎','—','—'] },
+  { key:'lisa',     ac:['✎','—','✎','—','—'] },
+  { key:'ekaterina',ac:['✎','—','✎','—','—'] },
+  { key:'kevin',    ac:['✎','—','✎','—','—'] },
+];
+
+const AC_CLASS = {'★':'ac-full','●':'ac-full','P':'ac-primary','✎':'ac-edit','👁':'ac-read','B':'ac-backup','—':'ac-none'};
+
+const DEPT_HEADERS = { ron:'⭐ Super Admin', elton:'🔑 Admin — Management', mark:'🔒 Manager — Compliance', jyoti:'🔒 Analyst — Compliance Backups', felipe:'⚙️ Analyst — Operations' };
+
+const tbody = document.getElementById('user-table');
+let lastDept = '';
+
+USER_MATRIX.forEach(row => {
+  const u = USERS[row.key];
+  if (!u) return;
+  const deptLabel = DEPT_HEADERS[row.key];
+  if (deptLabel) {
+    tbody.innerHTML += `<tr><td colspan="8" style="padding:8px 16px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.02);">${deptLabel}</td></tr>`;
+  }
+  const roleCls = { 'Super Admin':'role-superadmin', 'Admin':'role-admin', 'Manager':'role-manager', 'Analyst':'role-analyst' }[u.role] || 'role-analyst';
+  tbody.innerHTML += `<tr>
+    <td>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,${u.color},#7F21FF);">${u.initials}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${u.name}</div>
+          <div style="font-size:10.5px;color:var(--text-muted);font-family:var(--mono);">${u.email}</div>
+        </div>
+      </div>
+    </td>
+    <td><span class="role-pill ${roleCls}">${u.role}</span></td>
+    ${row.ac.map(a => `<td class="ac"><span class="${AC_CLASS[a]||'ac-none'}">${a}</span></td>`).join('')}
+    <td>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-xs">Edit</button>
+        <button class="btn btn-ghost btn-xs">Invite</button>
+      </div>
+    </td>
+  </tr>`;
+});
+
+// Audit log
+const AUDIT = [
+  { icon:'✓', text:'<strong>Felipe</strong> approved reply → David Chen (OTC Inquiry) · clientservice@perpolis.ca', time:'Today 9:14 AM', color:'#22C55E' },
+  { icon:'🤖', text:'AI generated draft for Sarah Whitmore KYC follow-up — 98% confidence', time:'Today 8:32 AM', color:'#7F21FF' },
+  { icon:'🔒', text:'<strong>Compliance flag</strong> — AML Query routed to Mark Antidormi @perpolis-compliance', time:'Yesterday 8:15 AM', color:'#EF4444' },
+  { icon:'✎', text:'<strong>Lisa</strong> edited AI draft for North Star LP onboarding', time:'Yesterday 4:12 PM', color:'#22C55E' },
+  { icon:'🗃', text:'Spam auto-archived — promo@cryptonews-daily.io (99% confidence)', time:'Today 7:44 AM', color:'#6b7280' },
+  { icon:'✓', text:'<strong>Mark</strong> resolved: LP Quarterly Compliance Report', time:'Monday 2:14 PM', color:'#22C55E' },
+  { icon:'👤', text:'<strong>Ron</strong> updated access control — added 40 Acres compliance@40acres.pro mailbox', time:'Apr 7, 9:00 AM', color:'#FF569D' },
+];
+
+document.getElementById('audit-timeline').innerHTML = AUDIT.map(a => `
+  <div class="tl-item">
+    <div class="tl-dot" style="border-color:${a.color};background:${a.color}20;">${a.icon}</div>
+    <div class="tl-body">
+      <div class="tl-text">${a.text}</div>
+      <div class="tl-time">${a.time}</div>
+    </div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>
