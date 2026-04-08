@@ -194,6 +194,19 @@
   border-top: none; border-radius: 0 0 var(--r-md) var(--r-md);
   flex-wrap: wrap;
 }
+/* Template selector panel */
+.tpl-panel { position:absolute; top:calc(100% + 6px); right:0; width:340px; background:var(--bg-elevated); border:1px solid var(--border-med); border-radius:var(--r-xl); box-shadow:0 12px 40px rgba(0,0,0,0.5); z-index:200; overflow:hidden; }
+.tpl-panel-head { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.tpl-panel-head span { font-size:12px; font-weight:700; color:var(--text); }
+.tpl-close { background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; padding:2px 6px; }
+.tpl-list { max-height:340px; overflow-y:auto; }
+.tpl-group-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em; padding:10px 14px 4px; }
+.tpl-item { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; cursor:pointer; border-bottom:1px solid var(--border); transition:background var(--fast); }
+.tpl-item:hover { background:rgba(127,33,255,0.07); }
+.tpl-icon { font-size:15px; flex-shrink:0; margin-top:1px; }
+.tpl-name { font-size:12.5px; font-weight:600; color:var(--text); }
+.tpl-cat  { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.tpl-anchor { position:relative; }
 .draft-tool-btn {
   padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
   border: 1px solid var(--border); background: transparent;
@@ -584,6 +597,9 @@
           AI Draft Reply
         </div>
         <span class="review-col-badge" id="confidenceBadge" style="background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.2);">94% Confidence</span>
+        <div class="tpl-anchor" style="margin-left:auto;" id="tpl-anchor-review">
+          <button class="btn btn-ghost btn-xs" id="tplBtn" onclick="toggleTemplatePanelReview(event)" title="Insert a canned response template" style="font-size:11px;">📋 Templates</button>
+        </div>
       </div>
       <div class="review-col-scroll">
 
@@ -951,6 +967,86 @@ const hintEl = document.createElement('div');
 hintEl.style.cssText = 'font-size:10px;color:var(--text-dim);margin-left:auto;margin-right:4px;';
 hintEl.innerHTML = '<kbd style="padding:2px 5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;font-size:9px;">⌘↵</kbd> Approve &nbsp; <kbd style="padding:2px 5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;font-size:9px;">⌘E</kbd> Edit &nbsp; <kbd style="padding:2px 5px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;font-size:9px;">⌘F</kbd> Flag';
 document.querySelector('.review-footer-right').prepend(hintEl);
+
+// ── Template panel (email-review.html) ──────
+function toggleTemplatePanelReview(evt) {
+  evt.stopPropagation();
+  const existing = document.getElementById('tpl-panel');
+  if (existing) { existing.remove(); return; }
+
+  const anchor = document.getElementById('tpl-anchor-review');
+  if (!anchor) return;
+
+  const company = email ? email.company : '';
+  let filtered = TEMPLATES.filter(t => t.company === company);
+  if (!filtered.length) filtered = TEMPLATES;
+
+  const catLabels = {
+    prospect_inquiry: 'Prospect Inquiry',
+    onboarding:       'Onboarding',
+    compliance_query: 'Compliance',
+    trade_execution:  'Trade Execution',
+    off_boarding:     'Off-boarding',
+  };
+
+  const groups = {};
+  filtered.forEach(t => {
+    const g = catLabels[t.category] || t.category;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(t);
+  });
+
+  const escHtml = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const groupHtml = Object.entries(groups).map(([label, items]) => `
+    <div class="tpl-group-label">${label}</div>
+    ${items.map(t => `
+      <div class="tpl-item" onclick="applyTemplateReview('${t.id}')">
+        <div class="tpl-icon">📄</div>
+        <div>
+          <div class="tpl-name">${escHtml(t.name)}</div>
+          <div class="tpl-cat">${escHtml(t.company)}</div>
+        </div>
+      </div>`).join('')}
+  `).join('');
+
+  const panel = document.createElement('div');
+  panel.className = 'tpl-panel';
+  panel.id = 'tpl-panel';
+  panel.innerHTML = `
+    <div class="tpl-panel-head">
+      <span>📋 Canned Response Templates</span>
+      <button class="tpl-close" onclick="document.getElementById('tpl-panel')?.remove()">✕</button>
+    </div>
+    <div class="tpl-list">${groupHtml}</div>`;
+
+  anchor.appendChild(panel);
+  setTimeout(() => {
+    document.addEventListener('click', function closeTpl(e) {
+      if (!panel.contains(e.target)) { panel.remove(); document.removeEventListener('click', closeTpl); }
+    });
+  }, 10);
+}
+
+function applyTemplateReview(templateId) {
+  const tpl = TEMPLATES.find(t => t.id === templateId);
+  if (!tpl) return;
+  const editor = document.getElementById('draftEditor');
+  if (!editor) return;
+
+  // Enable editing if needed
+  if (!isEditing) toggleEdit();
+
+  const formatted = tpl.body
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+  editor.innerHTML = formatted;
+  editor.style.borderColor = 'rgba(127,33,255,0.6)';
+  setTimeout(() => { editor.style.borderColor = ''; }, 1200);
+
+  document.getElementById('tpl-panel')?.remove();
+  showToast(`📋 Template applied — "${tpl.name}"`, 'success');
+}
 
 // ── Init ────────────────────────────────────
 populatePage();

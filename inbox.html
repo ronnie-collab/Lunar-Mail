@@ -40,6 +40,19 @@
   .comment-input { width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--r-md); padding:10px 14px; font-family:var(--font); font-size:13px; color:var(--text); resize:none; outline:none; }
   .comment-input:focus { border-color:var(--purple); }
   .empty-detail { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted); gap:12px; }
+  /* Template selector panel */
+  .tpl-panel { position:absolute; top:calc(100% + 6px); right:0; width:340px; background:var(--bg-elevated); border:1px solid var(--border-med); border-radius:var(--r-xl); box-shadow:0 12px 40px rgba(0,0,0,0.5); z-index:200; overflow:hidden; }
+  .tpl-panel-head { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .tpl-panel-head span { font-size:12px; font-weight:700; color:var(--text); }
+  .tpl-close { background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; padding:2px 6px; }
+  .tpl-list { max-height:340px; overflow-y:auto; }
+  .tpl-group-label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em; padding:10px 14px 4px; }
+  .tpl-item { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; cursor:pointer; border-bottom:1px solid var(--border); transition:background var(--fast); }
+  .tpl-item:hover { background:rgba(127,33,255,0.07); }
+  .tpl-icon { font-size:15px; flex-shrink:0; margin-top:1px; }
+  .tpl-name { font-size:12.5px; font-weight:600; color:var(--text); }
+  .tpl-cat  { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .tpl-anchor { position:relative; }
 </style>
 </head>
 <body>
@@ -129,56 +142,112 @@
 
 <script src="js/app.js"></script>
 <script>
-let currentFilter = 'all';
-let currentCompany = 'all';
-let selectedId = null;
+/* ── State ─────────────────────────────────────── */
+let currentCategoryFilter = 'all'; // chip bar: all | unread | pending | compliance | spam
+let currentStatusFilter   = 'all'; // dropdown: all | pending | draft | approved | escalated | archived
+let currentCompany        = 'all'; // sidebar company filter
+let currentSearch         = '';    // search box
+let selectedId            = null;
 
-function renderEmailList(emails) {
-  const container = document.getElementById('email-list');
-  if (!emails.length) {
-    container.innerHTML = `<div class="empty-detail" style="padding:60px 20px;"><div style="font-size:28px;opacity:0.3;">📭</div><div class="empty-title">No emails found</div></div>`;
-    return;
-  }
-  container.innerHTML = emails.map(em => `
-    <div class="email-item ${em.unread?'unread':''} ${selectedId===em.id?'selected':''}" onclick="selectEmail('${em.id}')">
-      ${em.unread?'<div class="em-unread-dot"></div>':''}
-      <div class="em-avatar" style="background:${em.avatarColor};">${em.from_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
-      <div class="em-body">
-        <div class="em-top">
-          <div class="em-sender">${em.from_name}</div>
-          <div class="em-time">${em.timeAgo}</div>
-        </div>
-        <div class="em-subject">${em.subject}</div>
-        <div class="em-preview">${em.preview}</div>
-        <div class="em-tags">
-          <span class="badge ${categoryBadgeClass(em.category)}">${categoryLabel(em.category)}</span>
-          <span class="badge ${statusBadgeClass(em.status)}">${em.status}</span>
-          ${em.priority==='high'?'<span class="badge badge-high">High</span>':''}
-          ${em.flagged?'<span class="badge badge-escalated">🔒 Escalated</span>':''}
-          <span class="badge badge-${em.company.toLowerCase().replace(/\s/g,'').includes('40')?' acres':em.company.toLowerCase().includes('paidly')?'paidly':'perpolis'}">${em.company}</span>
-        </div>
-      </div>
-    </div>
-  `).join('');
+/* ── Text formatting helper ─────────────────────
+   Converts \n → <br> and **bold** → <strong>    */
+function formatText(raw) {
+  if (!raw) return '';
+  return raw
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
 }
 
+/* ── Company badge class (no spaces) ───────────── */
+function companyBadgeClass(company) {
+  if (company.includes('40')) return 'badge-acres';
+  if (company.toLowerCase().includes('paidly')) return 'badge-paidly';
+  return 'badge-perpolis';
+}
+
+/* ── Get filtered + searched email list ─────────── */
 function getFilteredEmails() {
   return EMAILS.filter(em => {
-    const matchCompany = currentCompany === 'all' ||
+    const matchCompany =
+      currentCompany === 'all' ||
       (currentCompany === 'perpolis' && em.company === 'Perpolis OTC') ||
-      (currentCompany === 'acres' && em.company === '40 Acres') ||
-      (currentCompany === 'paidly' && em.company === 'Paidly Interactive');
-    const matchFilter = currentFilter === 'all' ||
-      (currentFilter === 'unread' && em.unread) ||
-      (currentFilter === 'pending' && em.status === 'pending') ||
-      (currentFilter === 'compliance' && em.category === 'compliance_query') ||
-      (currentFilter === 'spam' && em.category === 'spam');
-    return matchCompany && matchFilter;
+      (currentCompany === 'acres'    && em.company === '40 Acres') ||
+      (currentCompany === 'paidly'   && em.company === 'Paidly Interactive');
+
+    const matchCategory =
+      currentCategoryFilter === 'all' ||
+      (currentCategoryFilter === 'unread'     && em.unread) ||
+      (currentCategoryFilter === 'pending'    && em.status === 'pending') ||
+      (currentCategoryFilter === 'compliance' && em.category === 'compliance_query') ||
+      (currentCategoryFilter === 'spam'       && em.category === 'spam');
+
+    const matchStatus =
+      currentStatusFilter === 'all' ||
+      em.status === currentStatusFilter;
+
+    const matchSearch =
+      !currentSearch ||
+      em.from_name.toLowerCase().includes(currentSearch) ||
+      em.subject.toLowerCase().includes(currentSearch) ||
+      (em.preview || '').toLowerCase().includes(currentSearch) ||
+      em.from_email.toLowerCase().includes(currentSearch);
+
+    return matchCompany && matchCategory && matchStatus && matchSearch;
   });
 }
 
+/* ── Render email list ───────────────────────────── */
+function renderEmailList(emails) {
+  const container = document.getElementById('email-list');
+  if (!emails.length) {
+    container.innerHTML = `<div class="empty-detail" style="padding:60px 20px;text-align:center;">
+      <div style="font-size:28px;opacity:0.3;margin-bottom:10px;">📭</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text-sec);">No emails found</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Try a different filter or search term</div>
+    </div>`;
+    return;
+  }
+  container.innerHTML = emails.map(em => {
+    const initials = em.from_name.split(' ').filter(Boolean).map(n=>n[0]).join('').substring(0,2).toUpperCase();
+    const statusLabel = { pending:'Pending', draft:'Draft', approved:'Approved', escalated:'Escalated', archived:'Archived' }[em.status] || em.status;
+    return `
+    <div class="email-item ${em.unread?'unread':''} ${selectedId===em.id?'selected':''}" data-id="${em.id}" role="button" tabindex="0">
+      ${em.unread?'<div class="em-unread-dot"></div>':''}
+      <div class="em-avatar" style="background:${em.avatarColor||'#7F21FF'};">${initials}</div>
+      <div class="em-body">
+        <div class="em-top">
+          <div class="em-sender">${escHtml(em.from_name)}</div>
+          <div class="em-time">${em.timeAgo||''}</div>
+        </div>
+        <div class="em-subject">${escHtml(em.subject)}</div>
+        <div class="em-preview">${escHtml(em.preview||'')}</div>
+        <div class="em-tags">
+          <span class="badge ${categoryBadgeClass(em.category)}">${categoryLabel(em.category)}</span>
+          <span class="badge ${statusBadgeClass(em.status)}">${statusLabel}</span>
+          ${em.priority==='high'?'<span class="badge badge-high">High</span>':''}
+          ${em.flagged?'<span class="badge badge-escalated">🔒 Escalated</span>':''}
+          <span class="badge ${companyBadgeClass(em.company)}">${escHtml(em.company)}</span>
+        </div>
+      </div>
+    </div>`
+  }).join('');
+
+  // Event delegation — one listener on the container
+  container.onclick = e => {
+    const item = e.target.closest('[data-id]');
+    if (item) selectEmail(item.dataset.id);
+  };
+}
+
+/* ── HTML escape helper ─────────────────────────── */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Filter controls ────────────────────────────── */
 function setFilter(btn, filter) {
-  currentFilter = filter;
+  currentCategoryFilter = filter;
   document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderEmailList(getFilteredEmails());
@@ -192,77 +261,91 @@ function filterByCompany(company, btn) {
 }
 
 function filterByStatus(status) {
-  currentFilter = status;
+  currentStatusFilter = status;
   renderEmailList(getFilteredEmails());
 }
 
 function searchEmails(q) {
-  const results = EMAILS.filter(em =>
-    em.from_name.toLowerCase().includes(q.toLowerCase()) ||
-    em.subject.toLowerCase().includes(q.toLowerCase()) ||
-    em.preview.toLowerCase().includes(q.toLowerCase())
-  );
-  renderEmailList(results);
+  currentSearch = q.toLowerCase().trim();
+  renderEmailList(getFilteredEmails());
 }
 
+/* ── Select & render email detail ────────────────── */
 function selectEmail(id) {
   selectedId = id;
   const em = EMAILS.find(e => e.id === id);
   if (!em) return;
+  em.unread = false;
   renderEmailList(getFilteredEmails());
 
   const isCompliance = em.category === 'compliance_query' || em.flagged;
+  const u = getCurrentUser();
+  const canApprove = u.role !== 'Analyst';
+  const initials = em.from_name.split(' ').filter(Boolean).map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  const statusLabel = { pending:'Pending Review', draft:'Draft Ready', approved:'Approved', escalated:'Escalated', archived:'Archived' }[em.status] || em.status;
 
   document.getElementById('detail-pane').innerHTML = `
     <div class="detail-header">
-      <div class="detail-subject">${em.subject}</div>
+      <div class="detail-subject">${escHtml(em.subject)}</div>
       <div class="detail-meta-row">
         <div class="detail-from">
-          <div class="em-avatar" style="width:32px;height:32px;background:${em.avatarColor};font-size:11px;">${em.from_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+          <div class="em-avatar" style="width:34px;height:34px;background:${em.avatarColor||'#7F21FF'};font-size:11px;">${initials}</div>
           <div>
-            <div style="font-size:13px;font-weight:600;">${em.from_name}</div>
-            <div style="font-size:11.5px;color:var(--text-muted);">${em.from_email}</div>
+            <div style="font-size:13px;font-weight:600;">${escHtml(em.from_name)}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">${escHtml(em.from_email)}</div>
           </div>
         </div>
         <span class="badge ${categoryBadgeClass(em.category)}">${categoryLabel(em.category)}</span>
-        <span class="badge ${statusBadgeClass(em.status)}">${em.status}</span>
+        <span class="badge ${statusBadgeClass(em.status)}">${statusLabel}</span>
         ${em.priority==='high'?'<span class="badge badge-high">High Priority</span>':''}
-        <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${em.timeAgo}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${em.timeAgo||''}</span>
       </div>
-      ${isCompliance ? `<div class="alert alert-error" style="margin-top:12px;"><span>🔒</span><span><strong>Compliance Flag</strong> — This email has been escalated to ${em.escalatedTo || 'compliance team'}. Do not draft a response without compliance review.</span></div>` : ''}
+      ${isCompliance ? `<div class="alert alert-error" style="margin-top:12px;"><span>🔒</span><span><strong>Compliance Flag</strong> — Escalated to ${escHtml(em.escalatedTo||'compliance team')}. No AI draft reply until compliance review is complete.</span></div>` : ''}
+      ${!canApprove ? `<div class="alert alert-warning" style="margin-top:10px;font-size:12px;"><span>👁</span><span>Read-only view — Analysts can review drafts but cannot approve or send.</span></div>` : ''}
     </div>
 
-    <div class="detail-body">${em.body}</div>
+    <div class="detail-body">${formatText(em.body)}</div>
 
     <div class="detail-ai">
-      <div class="detail-ai-header">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="url(#ai-grad)" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="url(#ai-grad)" stroke-width="1.5" stroke-linecap="round"/><defs><linearGradient id="ai-grad" x1="0" y1="0" x2="16" y2="16"><stop stop-color="#7F21FF"/><stop offset="1" stop-color="#FF569D"/></linearGradient></defs></svg>
+      <div class="detail-ai-header" style="flex-wrap:wrap;gap:6px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="url(#aig)" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="url(#aig)" stroke-width="1.5" stroke-linecap="round"/><defs><linearGradient id="aig" x1="0" y1="0" x2="16" y2="16"><stop stop-color="#7F21FF"/><stop offset="1" stop-color="#FF569D"/></linearGradient></defs></svg>
         <span class="ai-panel-label">AI Draft Reply</span>
-        ${em.aiConfidence !== '—' ? `<span style="margin-left:auto;font-size:11px;color:var(--success);font-weight:600;">✓ ${em.aiConfidence} confidence</span>` : '<span style="margin-left:auto;font-size:11px;color:#fca5a5;font-weight:600;">⚠ Manual review required</span>'}
+        ${em.aiConfidence && em.aiConfidence !== '—'
+          ? `<span style="font-size:11px;color:var(--success);font-weight:600;">✓ ${escHtml(em.aiConfidence)} confidence</span>`
+          : `<span style="font-size:11px;color:#fca5a5;font-weight:600;">⚠ Manual review required</span>`}
+        <div class="tpl-anchor" style="margin-left:auto;" id="tpl-anchor-${em.id}">
+          ${!isCompliance && canApprove ? `<button class="btn btn-ghost btn-xs" onclick="toggleTemplatePanel('${em.id}','${escHtml(em.company)}',event)" title="Insert a canned response template">📋 Templates</button>` : ''}
+        </div>
       </div>
       <div class="detail-ai-body">
-        ${em.note ? `<div class="alert alert-warning" style="margin-bottom:12px;font-size:12px;"><span>⚠</span><span>${em.note}</span></div>` : ''}
-        <div class="detail-ai-draft" id="draft-content-${em.id}" contenteditable="${isCompliance?'false':'true'}" style="${isCompliance?'opacity:0.5;':'background:var(--bg-elevated);padding:14px;border-radius:var(--r-md);border:1px solid var(--border);min-height:100px;'}">${em.aiDraft}</div>
+        ${em.note ? `<div class="alert alert-warning" style="margin-bottom:12px;font-size:12px;"><span>⚠</span><span>${escHtml(em.note)}</span></div>` : ''}
+        <div class="detail-ai-draft" id="draft-${em.id}"
+             contenteditable="${isCompliance || !canApprove ? 'false' : 'true'}"
+             style="${isCompliance ? 'opacity:0.55;cursor:not-allowed;' : 'background:var(--bg-elevated);padding:16px;border-radius:var(--r-md);border:1px solid var(--border);min-height:120px;outline:none;'}"
+             onfocus="this.style.borderColor='rgba(127,33,255,0.5)'"
+             onblur="this.style.borderColor='var(--border)'"
+        >${formatText(em.aiDraft)}</div>
       </div>
       <div class="detail-actions">
-        ${!isCompliance ? `
-          <button class="btn btn-primary btn-sm" onclick="approveEmail('${em.id}')">✓ Approve & Send</button>
-          <button class="btn btn-secondary btn-sm">✏ Edit Draft</button>
+        ${!isCompliance && canApprove ? `
+          <button class="btn btn-primary btn-sm" id="approve-btn-${em.id}" onclick="approveEmail('${em.id}')">✓ Approve &amp; Send</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit('${em.id}')">✏ Edit Draft</button>
         ` : ''}
         <button class="btn btn-ghost btn-sm" onclick="flagCompliance('${em.id}')">🔒 Flag Compliance</button>
+        <a href="email-review.html?id=${em.id}" class="btn btn-ghost btn-sm" style="text-decoration:none;">⤢ Full Review</a>
         <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="archiveEmail('${em.id}')">Archive</button>
       </div>
     </div>
 
     <!-- Internal Comments -->
-    <div style="padding:0 20px 20px;">
-      <div class="section-label" style="margin-top:8px;">Internal Comments <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(not visible to client)</span></div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+    <div style="padding:0 20px 24px;">
+      <div class="section-label" style="margin-top:8px;">Internal Notes <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(not visible to client)</span></div>
+      <div id="comment-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
         <div class="comment-item">
           <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,#22C55E,#7F21FF);">FP</div>
           <div class="comment-body">
             <div class="comment-author">Felipe <span style="font-weight:400;color:var(--text-muted);">· Analyst</span></div>
-            <div class="comment-text">AI draft looks good. Double-checked the T+1 settlement info — confirmed correct. Ready to approve.</div>
+            <div class="comment-text">AI draft looks good. Double-checked the T+1 settlement info — confirmed correct.</div>
             <div class="comment-time">35 min ago</div>
           </div>
         </div>
@@ -270,9 +353,9 @@ function selectEmail(id) {
       <div style="display:flex;gap:10px;align-items:flex-start;">
         <div class="user-avatar" id="comment-avatar" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,#FF569D,#7F21FF);">RD</div>
         <div style="flex:1;">
-          <textarea class="comment-input" rows="2" placeholder="Add an internal comment..."></textarea>
+          <textarea class="comment-input" id="comment-input-${em.id}" rows="2" placeholder="Add an internal note..."></textarea>
           <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-            <button class="btn btn-ghost btn-xs">Post Comment</button>
+            <button class="btn btn-ghost btn-xs" onclick="postComment('${em.id}')">Post Note</button>
           </div>
         </div>
       </div>
@@ -280,36 +363,187 @@ function selectEmail(id) {
   `;
 }
 
+/* ── Edit toggle ───────────────────────────────── */
+function toggleEdit(id) {
+  const el = document.getElementById('draft-' + id);
+  if (!el) return;
+  const isEditing = el.contentEditable === 'true';
+  el.contentEditable = isEditing ? 'false' : 'true';
+  el.style.borderColor = isEditing ? 'var(--border)' : 'rgba(127,33,255,0.5)';
+  if (!isEditing) { el.focus(); }
+}
+
+/* ── Approve ───────────────────────────────────── */
 function approveEmail(id) {
   const em = EMAILS.find(e => e.id === id);
   if (!em) return;
-  if (confirm(`Approve and send this reply to ${em.from_email}?`)) {
+  const btn = document.getElementById('approve-btn-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Sending...'; }
+  setTimeout(() => {
     em.status = 'approved';
     em.unread = false;
     renderEmailList(getFilteredEmails());
-    alert('✅ Reply approved and queued for sending via Front API.');
-  }
+    selectEmail(id);
+    // Re-render status in header
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#181818;border:1px solid rgba(34,197,94,0.4);border-radius:99px;padding:10px 22px;font-size:13px;color:#4ade80;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+    toast.textContent = '✅ Reply approved and queued for sending via Front.';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }, 600);
 }
 
+/* ── Flag compliance ───────────────────────────── */
 function flagCompliance(id) {
   const em = EMAILS.find(e => e.id === id);
   if (!em) return;
   em.flagged = true;
   em.status = 'escalated';
-  alert('🔒 Email flagged for compliance review. Mark Antidormi has been notified via Slack.');
   renderEmailList(getFilteredEmails());
+  selectEmail(id);
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#181818;border:1px solid rgba(239,68,68,0.4);border-radius:99px;padding:10px 22px;font-size:13px;color:#fca5a5;font-weight:600;z-index:999;';
+  toast.textContent = '🔒 Flagged. Compliance team notified via Slack.';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
+/* ── Archive ───────────────────────────────────── */
 function archiveEmail(id) {
   const em = EMAILS.find(e => e.id === id);
   if (!em) return;
   em.status = 'archived';
-  document.getElementById('detail-pane').innerHTML = `<div class="empty-detail"><div style="font-size:28px;opacity:0.3;">📭</div><div class="empty-title">Email archived</div></div>`;
+  selectedId = null;
+  document.getElementById('detail-pane').innerHTML = `<div class="empty-detail"><div style="font-size:28px;opacity:0.3;margin-bottom:8px;">🗃</div><div style="font-size:14px;color:var(--text-sec);">Email archived</div></div>`;
   renderEmailList(getFilteredEmails());
 }
 
-// Init
+/* ── Post comment ──────────────────────────────── */
+function postComment(id) {
+  const input = document.getElementById('comment-input-' + id);
+  if (!input || !input.value.trim()) return;
+  const u = getCurrentUser();
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const list = document.getElementById('comment-list');
+  if (list) {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    item.innerHTML = `
+      <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:${u.color||'#7F21FF'}22;color:${u.color||'#7F21FF'};">${u.initials}</div>
+      <div class="comment-body">
+        <div class="comment-author">${escHtml(u.name)} <span style="font-weight:400;color:var(--text-muted);">· ${escHtml(u.role)}</span></div>
+        <div class="comment-text">${escHtml(input.value.trim())}</div>
+        <div class="comment-time">Just now · ${timeStr}</div>
+      </div>`;
+    list.appendChild(item);
+    input.value = '';
+  }
+}
+
+/* ── Template panel ────────────────────────────── */
+function toggleTemplatePanel(emailId, company, evt) {
+  evt.stopPropagation();
+  // Close any existing panel
+  const existing = document.getElementById('tpl-panel');
+  if (existing) { existing.remove(); return; }
+
+  const anchor = document.getElementById('tpl-anchor-' + emailId);
+  if (!anchor) return;
+
+  // Filter templates to current company, fall back to all if none match
+  let filtered = TEMPLATES.filter(t => t.company === company);
+  if (!filtered.length) filtered = TEMPLATES;
+
+  // Group by category label
+  const catLabels = {
+    prospect_inquiry: 'Prospect Inquiry',
+    onboarding:       'Onboarding',
+    compliance_query: 'Compliance',
+    trade_execution:  'Trade Execution',
+    off_boarding:     'Off-boarding',
+  };
+
+  const groups = {};
+  filtered.forEach(t => {
+    const g = catLabels[t.category] || t.category;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(t);
+  });
+
+  const groupHtml = Object.entries(groups).map(([label, items]) => `
+    <div class="tpl-group-label">${label}</div>
+    ${items.map(t => `
+      <div class="tpl-item" onclick="applyTemplate('${emailId}','${t.id}')">
+        <div class="tpl-icon">📄</div>
+        <div>
+          <div class="tpl-name">${escHtml(t.name)}</div>
+          <div class="tpl-cat">${escHtml(t.company)}</div>
+        </div>
+      </div>`).join('')}
+  `).join('');
+
+  const panel = document.createElement('div');
+  panel.className = 'tpl-panel';
+  panel.id = 'tpl-panel';
+  panel.innerHTML = `
+    <div class="tpl-panel-head">
+      <span>📋 Canned Response Templates</span>
+      <button class="tpl-close" onclick="document.getElementById('tpl-panel')?.remove()">✕</button>
+    </div>
+    <div class="tpl-list">${groupHtml}</div>`;
+
+  anchor.appendChild(panel);
+
+  // Click outside to close
+  setTimeout(() => {
+    document.addEventListener('click', function closeTpl(e) {
+      if (!panel.contains(e.target)) {
+        panel.remove();
+        document.removeEventListener('click', closeTpl);
+      }
+    });
+  }, 10);
+}
+
+function applyTemplate(emailId, templateId) {
+  const tpl = TEMPLATES.find(t => t.id === templateId);
+  if (!tpl) return;
+  const draft = document.getElementById('draft-' + emailId);
+  if (!draft) return;
+
+  // Store original for undo
+  draft.dataset.original = draft.innerHTML;
+
+  // Format and inject
+  const formatted = tpl.body
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+  draft.innerHTML = formatted;
+
+  // Highlight briefly
+  draft.style.borderColor = 'rgba(127,33,255,0.6)';
+  draft.style.background = 'rgba(127,33,255,0.05)';
+  setTimeout(() => {
+    draft.style.borderColor = 'var(--border)';
+    draft.style.background = 'var(--bg-elevated)';
+  }, 1200);
+
+  // Close panel
+  document.getElementById('tpl-panel')?.remove();
+
+  // Toast
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#181818;border:1px solid rgba(127,33,255,0.4);border-radius:99px;padding:10px 22px;font-size:13px;color:#c4b5fd;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+  toast.textContent = `📋 Template applied — "${tpl.name}"`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2800);
+}
+
+/* ── Init ──────────────────────────────────────── */
 renderEmailList(getFilteredEmails());
+applyRoleToPage(); // apply role-based restrictions
 </script>
 </body>
 </html>

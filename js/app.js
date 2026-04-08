@@ -227,10 +227,198 @@ function switchRole(key) {
   currentUser = key;
   renderUser();
   document.getElementById('role-modal')?.remove();
+  const u = USERS[key];
   // Update demo banner
   const banner = document.getElementById('demo-user-label');
-  if (banner) banner.textContent = `Viewing as: ${USERS[key].name} (${USERS[key].role})`;
+  if (banner) banner.textContent = `Viewing as: ${u.name} (${u.role})`;
+  // Apply role-based restrictions to current page
+  applyRoleToPage();
 }
+
+// ── Role-based page restrictions ─────────────────
+function applyRoleToPage() {
+  const u = getCurrentUser();
+  const isAdmin   = u.role === 'Super Admin' || u.role === 'Admin';
+  const isAnalyst = u.role === 'Analyst';
+
+  // Show/hide Admin Panel nav item
+  const adminNav = document.querySelector('[data-page="admin"]');
+  if (adminNav) adminNav.style.display = isAdmin ? '' : 'none';
+
+  // Update comment avatar to match current user
+  const commentAvatar = document.getElementById('comment-avatar');
+  if (commentAvatar) {
+    commentAvatar.textContent = u.initials;
+    commentAvatar.style.background = `linear-gradient(135deg, ${u.color}, #7F21FF)`;
+  }
+
+  // For analysts: disable approve/send buttons and show read-only notice
+  if (isAnalyst) {
+    document.querySelectorAll('[id^="approve-btn-"]').forEach(btn => {
+      btn.disabled = true;
+      btn.title = 'Read only — contact Manager or Admin to approve';
+      btn.style.opacity = '0.4';
+    });
+    // Add read-only notice to inbox if not already there
+    if (!document.getElementById('role-readonly-notice')) {
+      const notice = document.createElement('div');
+      notice.id = 'role-readonly-notice';
+      notice.style.cssText = 'margin:8px 14px;padding:8px 12px;background:rgba(255,186,13,0.07);border:1px solid rgba(255,186,13,0.2);border-radius:8px;font-size:12px;color:#FFBA0D;display:flex;gap:8px;align-items:center;';
+      notice.innerHTML = `<span>👁</span><span>Viewing as <strong>${u.name}</strong> — Analyst role. Read-only access. Drafts visible but Approve &amp; Send is disabled.</span>`;
+      const filterBar = document.querySelector('.filter-bar');
+      if (filterBar) filterBar.after(notice);
+    }
+  } else {
+    // Remove read-only notice if present
+    document.getElementById('role-readonly-notice')?.remove();
+    // Re-enable approve buttons
+    document.querySelectorAll('[id^="approve-btn-"]').forEach(btn => {
+      btn.disabled = false;
+      btn.title = '';
+      btn.style.opacity = '';
+    });
+  }
+}
+
+// ── Canned Response Templates ─────────────────────────────────
+// Sourced from EDRA Template Library (Notion). Used to pre-fill
+// AI draft panel in inbox.html and email-review.html.
+const TEMPLATES = [
+
+  /* ── Perpolis OTC ───────────────────────────────────────── */
+  {
+    id: 'pp-001', company: 'Perpolis OTC', category: 'prospect_inquiry',
+    name: 'Initial Inquiry — More Info Request',
+    body: `Hi <Client First Name>,\n\nThank you for reaching out to Perpolis OTC.\n\nBefore we can move forward, we kindly ask that you provide a few additional details:\n\n- Volume or amount per trade?\n- Any specific trading pairs (BTC/CAD, ETH/USD, etc.)?\n- Are you trading as an individual or on behalf of a company?\n- Region/jurisdiction you are based in?\n\nOnce we receive this information, we'll be able to guide you through the next steps.\n\nWe look forward to your response.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-002', company: 'Perpolis OTC', category: 'prospect_inquiry',
+    name: 'Services Overview — What Trading Services Do You Offer?',
+    body: `Hi <Client First Name>,\n\nThank you for your interest in Perpolis OTC.\n\nWe are a regulated OTC cryptocurrency trading desk providing the following services:\n\n- **OTC Trading**: Direct over-the-counter trades for BTC, ETH, USDT, and USDC\n- **Settlement**: T+1 settlement via bank wire (CAD, USD, EUR)\n- **Minimum Trade Size**: $50,000 CAD equivalent per transaction\n- **Jurisdiction**: We serve clients in Canada and select international markets (excluding the USA)\n\nTo proceed with an application, please provide:\n- Your region of operations\n- Estimated monthly trading volume\n- Asset preferences\n\nWe look forward to hearing from you.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-003', company: 'Perpolis OTC', category: 'prospect_inquiry',
+    name: 'Introducing Perpolis to a New Client',
+    body: `Hello <First Name>,\n\nThank you for reaching out to us.\n\nPerpolis OTC is a regulated cryptocurrency trading desk offering institutional and high-net-worth clients access to OTC liquidity in Bitcoin, Ethereum, USDT, and USDC. We provide competitive pricing, T+1 settlement, and a fully compliant onboarding experience.\n\nTo determine if we can be of service to you, we'd love to learn a little more:\n\n- What is your company's primary business?\n- What region are you based in?\n- What volume and trading pairs are you interested in?\n\nOnce we have this information, we'll provide you with the next steps.\n\nBest regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-004', company: 'Perpolis OTC', category: 'onboarding',
+    name: 'Onboarding — Client Registration Form and MSA',
+    body: `Hi <Client First Name>,\n\nThank you for your interest in opening an account with Perpolis OTC.\n\nTo begin the onboarding process, please complete the following steps:\n\n1. **Client Registration Form** — Please fill out and return the attached registration form with your company and contact details.\n\n2. **Master Services Agreement (MSA)** — Please review, sign, and return the attached MSA. This agreement governs our trading relationship.\n\n3. **KYC Documentation** — Once the above are returned, our compliance team will reach out with the KYC requirements specific to your entity type.\n\nIf you have any questions about the documents, please don't hesitate to ask.\n\nWe look forward to welcoming you as a client.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-005', company: 'Perpolis OTC', category: 'compliance_query',
+    name: 'Onboarding — Additional Details Required by Compliance',
+    body: `Hi <Client First Name>,\n\nThank you for submitting your onboarding documents.\n\nOur compliance team has reviewed your application and requires the following additional information before we can proceed:\n\n- [Insert specific requirement here]\n- [Insert specific requirement here]\n\nCould you please provide the above at your earliest convenience? Once received, we aim to complete the review within 2–3 business days.\n\nIf you have any questions, please don't hesitate to reach out.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-006', company: 'Perpolis OTC', category: 'onboarding',
+    name: 'Onboarding — Client Not Responding',
+    body: `Hi <Client First Name>,\n\nWe noticed that we haven't heard back from you regarding your Perpolis OTC onboarding.\n\nIf you still wish to proceed, please reply to this email or complete the pending step at your earliest convenience.\n\nIf you need more time or have any questions, we're happy to help — just let us know.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-007', company: 'Perpolis OTC', category: 'onboarding',
+    name: 'Account Approved — Welcome Email',
+    body: `Hi <Client First Name>,\n\nWe are pleased to inform you that your Perpolis OTC account has been approved and is now active.\n\nYou can log in to the trading platform using the credentials you created during registration.\n\nFor reference, here are your next steps:\n\n1. Log in to your account and verify your profile settings\n2. Add your wallet address(es) to the whitelist\n3. Initiate your first trade by contacting your dedicated account manager\n\nWelcome aboard — we look forward to building a successful trading relationship with you.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-008', company: 'Perpolis OTC', category: 'onboarding',
+    name: 'Account Approved — Wallet Whitelist Instructions',
+    body: `Hi <Client First Name>,\n\nNow that your account is active, the next step is to whitelist your wallet address(es) for receiving funds.\n\n**How to whitelist a wallet:**\n\n1. Log in to the Perpolis platform\n2. Navigate to **Settings > Wallet Addresses**\n3. Click **Add New Address** and enter your wallet address\n4. Select the asset (BTC, ETH, USDT, USDC)\n5. Submit — our team will verify and approve the address within 1 business day\n\nOnce approved, you'll be ready to receive settlements directly to your wallet.\n\nIf you have any questions, don't hesitate to reach out.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-009', company: 'Perpolis OTC', category: 'trade_execution',
+    name: 'Agency Trading — Model Introduction',
+    body: `Hi <Client First Name>,\n\nThank you for your inquiry about our Agency Trading model.\n\nUnder our agency model, Perpolis acts as your agent — sourcing the best available liquidity in the market on your behalf. Key features include:\n\n- **Best Execution**: We seek the best price across our liquidity network\n- **Full Transparency**: You receive a complete transaction report with all execution details\n- **Fee Structure**: A flat agency fee applies per transaction (shared in the MSA)\n- **Supported Assets**: BTC, ETH, USDT, USDC\n\nThis model is particularly well-suited for larger block trades where market impact is a concern.\n\nWould you like to schedule a call to discuss how this could work for your specific needs?\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-010', company: 'Perpolis OTC', category: 'compliance_query',
+    name: 'Compliance — Source of Funds Request',
+    body: `Hi <Client First Name>,\n\nAs part of our ongoing compliance obligations, we are required to verify the source of funds for your account.\n\nCould you please provide the following documentation at your earliest convenience:\n\n- **Source of Funds Declaration**: A brief written explanation of the origin of the funds being used for trading\n- **Supporting Documentation**: Bank statements, investment account statements, or other documentation confirming the source\n\nThis is a standard regulatory requirement and applies to all our clients. Your information is handled in strict confidence.\n\nIf you have any questions about this request, please don't hesitate to reach out.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-011', company: 'Perpolis OTC', category: 'off_boarding',
+    name: 'Off-boarding — Account Closure Confirmation',
+    body: `Hi <Client First Name>,\n\nThank you for getting in touch.\n\nBefore we proceed with closing your account, please clarify:\n\n- Do you wish to **permanently close** your Perpolis OTC account, or would you prefer a **temporary suspension** of trading activity?\n- Is there anything we can do to address your concerns or improve your experience?\n\nWe'd appreciate the opportunity to understand your reasons, and if there's anything we can do to assist further before you go, please don't hesitate to let us know.\n\nKind regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-012', company: 'Perpolis OTC', category: 'off_boarding',
+    name: 'Off-boarding — Account Closed',
+    body: `Hi <Client First Name>,\n\nWe hereby confirm that your Perpolis OTC account has been closed as of today.\n\nAll pending settlements have been processed and your wallet addresses have been removed from the whitelist.\n\nWe're sorry to see you go and wish you all the best in your future endeavours. Should you ever wish to reopen your account, we'd be happy to welcome you back.\n\nAll the best,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-013', company: 'Perpolis OTC', category: 'off_boarding',
+    name: 'Off-boarding — Client Declined',
+    body: `Hi <Client First Name>,\n\nThank you for your interest in Perpolis OTC.\n\nAfter reviewing your application, we regret to inform you that we are unable to onboard you as a client at this time due to our internal compliance policies.\n\nWe appreciate the time you took to complete our application process and wish you all the best.\n\nKind Regards,\nClient Service - Perpolis OTC`,
+  },
+  {
+    id: 'pp-014', company: 'Perpolis OTC', category: 'off_boarding',
+    name: 'Off-boarding — Client Declined (Geographic — USA)',
+    body: `Hi <Client First Name>,\n\nThank you for your interest in Perpolis OTC.\n\nUnfortunately, due to your stated geographic location, we are unable to offer our trading services to you at this time. Perpolis OTC does not currently serve clients based in the United States.\n\nWe appreciate the time you took in completing our application process and wish you all the best.\n\nKind Regards,\nClient Service - Perpolis OTC`,
+  },
+
+  /* ── 40 Acres ───────────────────────────────────────────── */
+  {
+    id: 'ac-001', company: '40 Acres', category: 'prospect_inquiry',
+    name: 'Initial Inquiry — More Info Request',
+    body: `Hi <Client First Name>,\n\nThank you for reaching out to us. Before we can move forward, we kindly ask that you provide a few additional details:\n\n- Volume or amount per trade?\n- We only support Bitcoin, USDT, USDC & ETH. Are you fine with these? If so, please also provide the trading pairs you would like to use.\n- Region you are based in?\n- Your company's primary business?\n\nOnce we receive this information, we'll be able to guide you through the next steps.\n\nWe look forward to your response.\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-002', company: '40 Acres', category: 'onboarding',
+    name: 'Onboarding — Account Registration Requirements',
+    body: `Hi <client first name>,\n\nThank you for your reply.\n\nThe onboarding requirements for 40 Acres Trading Platform are as described below. Please ensure you have the below documents and details handy before starting the onboarding process.\n\n**1. Company Data:** Country, Company name, Registration number, Legal address.\n\n**2. Company Documents / Ownership Structure** (one or multiple of the following):\n- Shareholder registry, Statement of information, Trust agreement, or Recent excerpt from a state company registry\n\n**3. Associated Parties Verification**\n\nUBOs: First name, last name, date of birth, email, ID document, selfie/liveness test.\nDirectors: Same as UBOs, plus phone number.\n\n**4. Business Questionnaire:**\n- Nature of Business, Invoicing Volume per Month, Bank Account Details (IBAN, SWIFT, etc.)\n- Acknowledgement of Terms of Service\n\nKind Regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-003', company: '40 Acres', category: 'prospect_inquiry',
+    name: 'Services Overview — What Trading Services Do You Offer?',
+    body: `Subject: Next Steps for Your Trading Application\n\nHello <First Name>,\n\nThank you for reaching out to us. Please find answers to your initial questions below:\n\n- **Types of Trading Available**: We provide OTC Trading services, where you can convert from any of BTC, ETH, USDT, and USDC.\n- **Settlement Timeline**: We will settle EUR & USD to your bank account within two business days as described in the MSA (excluding weekends and holidays).\n\nIf you would like to proceed with an application, kindly provide:\n- The region in which you are based\n- Your company's primary business\n- Volume and trading pairs you are interested in\n\nWe look forward to your response.\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-004', company: '40 Acres', category: 'prospect_inquiry',
+    name: 'Onboarding — Introducing 40Acres to a New Client',
+    body: `Hello <First Name>,\n\nThank you for reaching out to us.\n\nTo move forward, we kindly ask that you share the following details:\n- The region you are based in\n- Your company's primary business (for corporate accounts)\n- Volume and trading pairs you are interested in\n\nOnce we have this information, we'll provide you with the next steps.\n\nBest regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-005', company: '40 Acres', category: 'compliance_query',
+    name: 'KYC — Documents Required for Verification',
+    body: `Dear <Client Name>,\n\nAs part of the onboarding process, our verification platform will request the following documentation. We wanted to give you a heads-up so you can have everything ready beforehand:\n\n- Certificate of Incorporation\n- Articles of Association\n- Recent Business Registry Extract (issued within the last 3 months)\n- Proof of Company Address\n- UBO Register & Directors Register\n- Latest Audited Financial Statements (or bank statements if recently incorporated)\n- Tax Identification Number (TIN) and VAT Registration Certificate\n- Ownership Structure Diagram (UBOs with holdings exceeding 10%)\n- Valid ID Documents & Proof of Address for UBOs (within last 3 months)\n\nHaving these prepared in advance will help ensure a smooth process. Should any additional documentation be needed, we'll reach out directly.\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-006', company: '40 Acres', category: 'compliance_query',
+    name: 'KYC — Rejection Follow-up',
+    body: `Dear <Client Name>,\n\nThank you for reaching out. We understand how frustrating this can be, and we're here to help you get this resolved.\n\nWhen a KYC application is rejected, the verification platform typically provides a reason. Common reasons include:\n\n- Documents that are expired or illegible\n- Information that doesn't match across submitted documents\n- Missing or incomplete documentation\n- Proof of address older than 3 months\n\nWe'll review your specific case and share the details with you. Once the issue is identified, you'll simply need to upload the corrected documents through the platform.\n\nWe'll be in touch shortly with more details.\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-007', company: '40 Acres', category: 'onboarding',
+    name: 'Account Approved — Welcome Email',
+    body: `Hi <client first name>,\n\nHope you are doing well.\n\nWe are pleased to inform you that your account is approved to start operating at the Trading Platform.\n\nYou can proceed using the instructions in our Getting Started Guide.\n\nPlease don't hesitate to contact us if you have any questions or require assistance.\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-008', company: '40 Acres', category: 'onboarding',
+    name: 'Onboarding — Client Not Responding',
+    body: `Hi <client first name>,\n\nWe noticed you haven't accessed the link for completing the onboarding process with us.\n\nPlease feel free to let us know if you require more time to complete this process.\n\nShould you have any questions or concerns, please get in touch and we're happy to assist.\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-009', company: '40 Acres', category: 'off_boarding',
+    name: 'Off-boarding — Account Closure Request',
+    body: `Hi <client first name>,\n\nThank you for getting in touch.\n\nBefore we proceed, please clarify whether you wish to close your 40 Acres trading account indefinitely or temporarily suspend your trading activity.\n\nIn case there's something we can do to change your mind, would you mind sharing with us your reasons for considering account closure?\n\nKind regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-010', company: '40 Acres', category: 'off_boarding',
+    name: 'Off-boarding — Account Closed Confirmation',
+    body: `Hi <client first name>,\n\nWe hereby confirm that your 40 Acres account has been closed.\n\nWe are sad to see you go, but we wish you well in your future endeavours.\n\nAll the best,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-011', company: '40 Acres', category: 'off_boarding',
+    name: 'Off-boarding — Client Declined',
+    body: `Hi <client first name>,\n\nWe have reviewed your application and have decided that we are unable to onboard you as a client at this time due to our internal policies.\n\nWe appreciate your time in completing our application process and wish you all the best.\n\nKind Regards,\nClient Service - 40Acres`,
+  },
+  {
+    id: 'ac-012', company: '40 Acres', category: 'off_boarding',
+    name: 'Off-boarding — Client Declined (Geographic — USA)',
+    body: `Hi <client first name>,\n\nDue to your stated geographic location we are unable to make our trading services available to you.\n\nWe appreciate your time in completing our application process, and wish you all the best.\n\nKind Regards,\nClient Service - 40Acres`,
+  },
+];
 
 // ── Navigate ──────────────────────────────────────────────────
 function navigate(page) {

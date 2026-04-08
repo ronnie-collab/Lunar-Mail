@@ -6,12 +6,13 @@
 <title>Lunar Mail — Admin Panel</title>
 <link rel="stylesheet" href="css/main.css"/>
 <style>
-  .admin-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; }
-  .admin-tab { padding:10px 18px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all var(--fast) ease; }
-  .admin-tab:hover { color:var(--text); }
-  .admin-tab.active { color:var(--text); border-bottom-color:var(--purple); }
-  .tab-panel { display:none; }
-  .tab-panel.active { display:block; }
+  .admin-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; flex-wrap:wrap; }
+  .admin-tab { padding:10px 18px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s ease; white-space:nowrap; }
+  .admin-tab:hover { color:var(--text); background:rgba(255,255,255,0.02); }
+  .admin-tab.active { color:var(--text); border-bottom-color:var(--purple); background:rgba(127,33,255,0.04); }
+  .tab-panel { display:none !important; }
+  .tab-panel.active { display:block !important; }
+  .page-body { overflow-y:auto; }
   .user-row td { vertical-align:middle; }
   .invite-box { background:rgba(127,33,255,0.06); border:1px solid rgba(127,33,255,0.2); border-radius:var(--r-xl); padding:20px 22px; margin-bottom:20px; }
   .sso-step { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
@@ -237,9 +238,21 @@
 function showTab(tab, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
-  btn.classList.add('active');
+  const panel = document.getElementById('tab-' + tab);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
+
+// Role gate — non-admins redirected away from admin page
+(function checkAdminAccess() {
+  const u = getCurrentUser ? getCurrentUser() : null;
+  if (u && u.role !== 'Super Admin' && u.role !== 'Admin') {
+    const banner = document.getElementById('demo-user-label');
+    if (banner) banner.innerHTML = `⚠ Admin Panel — restricted to Admin roles. Viewing as <strong>${u.name} (${u.role})</strong> — read-only.`;
+    // Disable destructive buttons for non-admins
+    document.querySelectorAll('.btn-primary').forEach(b => { b.disabled = true; b.title = 'Admin access required'; b.style.opacity='0.4'; });
+  }
+})()
 
 // User table data
 const USER_MATRIX = [
