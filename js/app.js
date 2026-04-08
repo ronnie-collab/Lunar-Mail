@@ -420,6 +420,25 @@ const TEMPLATES = [
   },
 ];
 
+// ── Mobile Sidebar Toggle ─────────────────────────────────────
+function toggleMobileSidebar() {
+  const sidebar  = document.querySelector('.sidebar');
+  const overlay  = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const isOpen   = sidebar.classList.contains('mobile-open');
+  sidebar.classList.toggle('mobile-open', !isOpen);
+  if (overlay) overlay.classList.toggle('active', !isOpen);
+  // Close on nav-item click on mobile
+  if (!isOpen) {
+    sidebar.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        sidebar.classList.remove('mobile-open');
+        if (overlay) overlay.classList.remove('active');
+      }, { once: true });
+    });
+  }
+}
+
 // ── Navigate ──────────────────────────────────────────────────
 function navigate(page) {
   const pages = {

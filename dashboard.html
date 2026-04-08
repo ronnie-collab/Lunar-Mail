@@ -33,6 +33,7 @@
 </head>
 <body>
 <div class="bg-orb orb-purple"></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 <div class="bg-orb orb-pink"></div>
 
 <div class="app-shell">
@@ -87,6 +88,7 @@
 
     <!-- Top Bar -->
     <div class="topbar">
+      <button class="topbar-hamburger" onclick="toggleMobileSidebar()" aria-label="Menu">☰</button>
       <div class="topbar-title grad-text">Dashboard</div>
       <div class="topbar-actions">
         <div style="font-size:12px;color:var(--text-muted);" id="current-date"></div>

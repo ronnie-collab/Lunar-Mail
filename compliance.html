@@ -42,6 +42,7 @@
 </head>
 <body>
 <div class="bg-orb orb-purple"></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 <div class="app-shell">
 
   <aside class="sidebar">
@@ -81,6 +82,7 @@
       <span>Phase 1 Prototype · <span id="demo-user-label">Viewing as: Ronnie David (Super Admin)</span></span>
     </div>
     <div class="topbar">
+      <button class="topbar-hamburger" onclick="toggleMobileSidebar()" aria-label="Menu">☰</button>
       <div class="topbar-title" style="color:#fca5a5;">🔒 Compliance Queue</div>
       <div class="topbar-actions">
         <span class="badge badge-escalated" style="font-size:12px;padding:5px 14px;">2 Active Alerts</span>
