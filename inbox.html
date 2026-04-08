@@ -4,11 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Lunar Mail — Inbox</title>
-<link rel="stylesheet" href="css/main.css?v=3"/>
+<link rel="stylesheet" href="css/main.css"/>
 <style>
+  /* ── Inbox split layout ──────────────────────────────────────────── */
   .inbox-wrap { display:grid; grid-template-columns:380px 1fr; height:calc(100vh - 97px); overflow:hidden; }
-  .email-list-panel { border-right:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; }
-  .filter-bar { display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg-sidebar); flex-wrap:wrap; }
+
+  /* ── Email list panel ────────────────────────────────────────────── */
+  .email-list-panel { border-right:1px solid var(--border); display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+  .filter-bar { display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg-sidebar); flex-wrap:wrap; flex-shrink:0; }
   .filter-chip { padding:4px 12px; border-radius:var(--r-full); font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); color:var(--text-muted); background:transparent; transition:all var(--fast) ease; }
   .filter-chip:hover { color:var(--text); border-color:var(--border-med); }
   .filter-chip.active { background:rgba(127,33,255,0.12); color:#c4b5fd; border-color:rgba(127,33,255,0.3); }
@@ -25,22 +28,47 @@
   .em-subject { font-size:12.5px; color:var(--text-sec); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .em-preview { font-size:11.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .em-tags { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
-  /* Detail pane */
-  .detail-pane { overflow-y:auto; display:flex; flex-direction:column; background:var(--bg); }
-  .detail-header { padding:24px; border-bottom:1px solid var(--border); }
-  .detail-subject { font-size:19px; font-weight:700; margin-bottom:12px; line-height:1.3; }
-  .detail-meta-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+  /* ── Detail pane — KEY: display:block not flex, min-height:0 ─────── */
+  .detail-pane { min-height:0; overflow-y:auto; overflow-x:hidden; display:block; background:var(--bg); scroll-behavior:smooth; }
+
+  /* Sticky email header */
+  .detail-header { position:sticky; top:0; z-index:20; background:var(--bg); padding:18px 24px 14px; border-bottom:1px solid var(--border); box-shadow:0 2px 16px rgba(0,0,0,0.3); }
+  .detail-subject { font-size:17px; font-weight:700; margin-bottom:10px; line-height:1.3; color:var(--text); }
+  .detail-meta-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .detail-from { display:flex; align-items:center; gap:10px; }
-  .detail-body { padding:24px; font-size:14px; line-height:1.85; color:var(--text-sec); white-space:pre-line; border-bottom:1px solid var(--border); }
-  .detail-ai { margin:20px; background:rgba(127,33,255,0.05); border:1px solid rgba(127,33,255,0.25); border-radius:var(--r-xl); overflow:hidden; }
-  .detail-ai-header { background:rgba(127,33,255,0.1); border-bottom:1px solid rgba(127,33,255,0.2); padding:12px 18px; display:flex; align-items:center; gap:10px; }
+
+  /* Section tab navigation — sticky just below header */
+  .detail-section-nav { display:flex; background:var(--bg-sidebar); border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; position:sticky; top:82px; z-index:19; }
+  .detail-section-nav::-webkit-scrollbar { display:none; }
+  .detail-section-tab { display:inline-flex; align-items:center; gap:5px; padding:10px 18px; font-size:11.5px; font-weight:600; color:var(--text-muted); cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent; transition:color .15s,border-color .15s; flex-shrink:0; user-select:none; }
+  .detail-section-tab:hover { color:var(--text); }
+  .detail-section-tab.active { color:var(--purple); border-bottom-color:var(--purple); }
+
+  /* Section divider labels */
+  .section-divider { display:flex; align-items:center; gap:10px; padding:20px 24px 10px; }
+  .section-divider-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); white-space:nowrap; }
+  .section-divider-line { flex:1; height:1px; background:var(--border); }
+
+  /* Email body */
+  .detail-body { padding:20px 24px 28px; font-size:14px; line-height:1.85; color:var(--text-sec); }
+
+  /* AI draft card */
+  .detail-ai { margin:0 20px 20px; background:rgba(127,33,255,0.04); border:1px solid rgba(127,33,255,0.25); border-radius:var(--r-xl); overflow:hidden; }
+  .detail-ai-header { background:rgba(127,33,255,0.08); border-bottom:1px solid rgba(127,33,255,0.2); padding:12px 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .detail-ai-body { padding:18px; }
   .detail-ai-draft { font-size:13.5px; line-height:1.8; color:var(--text-sec); white-space:pre-line; }
-  .detail-actions { display:flex; gap:10px; padding:14px 18px; border-top:1px solid var(--border); flex-wrap:wrap; }
-  .comment-input { width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--r-md); padding:10px 14px; font-family:var(--font); font-size:13px; color:var(--text); resize:none; outline:none; }
+  .detail-actions { display:flex; gap:8px; padding:12px 18px; border-top:1px solid rgba(127,33,255,0.15); flex-wrap:wrap; align-items:center; background:rgba(127,33,255,0.03); }
+
+  /* Internal notes */
+  .detail-notes { padding:0 24px 36px; }
+  .comment-input { width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--r-md); padding:10px 14px; font-family:var(--font); font-size:13px; color:var(--text); resize:none; outline:none; box-sizing:border-box; }
   .comment-input:focus { border-color:var(--purple); }
-  .empty-detail { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-muted); gap:12px; }
-  /* Template selector panel */
+
+  /* Empty state */
+  .empty-detail { display:flex; flex-direction:column; align-items:center; justify-content:center; height:calc(100vh - 200px); color:var(--text-muted); gap:12px; padding:40px; text-align:center; }
+
+  /* Template panel */
   .tpl-panel { position:absolute; top:calc(100% + 6px); right:0; width:340px; background:var(--bg-elevated); border:1px solid var(--border-med); border-radius:var(--r-xl); box-shadow:0 12px 40px rgba(0,0,0,0.5); z-index:200; overflow:hidden; }
   .tpl-panel-head { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
   .tpl-panel-head span { font-size:12px; font-weight:700; color:var(--text); }
@@ -53,18 +81,24 @@
   .tpl-name { font-size:12.5px; font-weight:600; color:var(--text); }
   .tpl-cat  { font-size:11px; color:var(--text-muted); margin-top:2px; }
   .tpl-anchor { position:relative; }
-  @media(max-width:1100px){ .inbox-wrap{ grid-template-columns:300px 1fr; } }
-  @media(max-width:880px){  .inbox-wrap{ grid-template-columns:240px 1fr; height:calc(100vh - 120px); }
+
+  /* ── Responsive breakpoints (media queries LAST — cascade order) ─── */
+  @media(max-width:1100px) { .inbox-wrap{ grid-template-columns:300px 1fr; } }
+  @media(max-width:880px) {
+    .inbox-wrap{ grid-template-columns:240px 1fr; height:calc(100vh - 120px); }
     .filter-bar{ gap:4px; padding:8px 10px; flex-wrap:nowrap; overflow-x:auto; }
     .filter-chip{ padding:3px 10px; font-size:10.5px; flex-shrink:0; }
-    .detail-body,.detail-ai{ margin:12px; }
-    .detail-header{ padding:16px; }
+    .detail-header{ padding:14px 16px 12px; }
+    .detail-section-nav{ top:68px; }
+    .detail-body{ padding:16px 16px 22px; }
+    .detail-ai{ margin:0 12px 16px; }
+    .detail-notes{ padding:0 16px 28px; }
   }
-  @media(max-width:640px){
+  @media(max-width:640px) {
     .inbox-wrap{ grid-template-columns:1fr; height:auto; }
     .email-list-panel{ height:calc(100vh - 97px); overflow-y:auto; }
     .detail-pane{ display:none; position:fixed; inset:0; top:0; z-index:100; background:var(--bg); overflow-y:auto; }
-    .detail-pane.mobile-active{ display:flex; flex-direction:column; }
+    .detail-pane.mobile-active{ display:block; }
     .mobile-back-btn{ display:flex; }
   }
 </style>
@@ -157,7 +191,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js"></script>
 <script>
 /* ── State ─────────────────────────────────────── */
 let currentCategoryFilter = 'all'; // chip bar: all | unread | pending | compliance | spam
@@ -302,7 +336,9 @@ function selectEmail(id) {
   const statusLabel = { pending:'Pending Review', draft:'Draft Ready', approved:'Approved', escalated:'Escalated', archived:'Archived' }[em.status] || em.status;
 
   document.getElementById('detail-pane').innerHTML = `
-    <div class="detail-header">
+
+    <!-- ── Sticky header ── -->
+    <div class="detail-header" id="dp-header">
       <div class="detail-subject">${escHtml(em.subject)}</div>
       <div class="detail-meta-row">
         <div class="detail-from">
@@ -317,47 +353,68 @@ function selectEmail(id) {
         ${em.priority==='high'?'<span class="badge badge-high">High Priority</span>':''}
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${em.timeAgo||''}</span>
       </div>
-      ${isCompliance ? `<div class="alert alert-error" style="margin-top:12px;"><span>🔒</span><span><strong>Compliance Flag</strong> — Escalated to ${escHtml(em.escalatedTo||'compliance team')}. No AI draft reply until compliance review is complete.</span></div>` : ''}
-      ${!canApprove ? `<div class="alert alert-warning" style="margin-top:10px;font-size:12px;"><span>👁</span><span>Read-only view — Analysts can review drafts but cannot approve or send.</span></div>` : ''}
+      ${isCompliance?`<div class="alert alert-error" style="margin-top:12px;"><span>🔒</span><span><strong>Compliance Flag</strong> — Escalated to ${escHtml(em.escalatedTo||'compliance team')}. No AI draft reply until review is complete.</span></div>`:''}
+      ${!canApprove?`<div class="alert alert-warning" style="margin-top:10px;font-size:12px;"><span>👁</span><span>Read-only view — Analysts can review drafts but cannot approve or send.</span></div>`:''}
     </div>
 
+    <!-- ── Section tab navigation ── -->
+    <div class="detail-section-nav" id="dp-nav">
+      <span class="detail-section-tab active" onclick="scrollToDetailSection('sec-email')">📧 Email</span>
+      <span class="detail-section-tab"         onclick="scrollToDetailSection('sec-draft')">🤖 AI Draft</span>
+      <span class="detail-section-tab"         onclick="scrollToDetailSection('sec-notes')">💬 Notes</span>
+    </div>
+
+    <!-- ── EMAIL BODY ── -->
+    <div id="sec-email"></div>
     <div class="detail-body">${formatText(em.body)}</div>
 
+    <!-- ── AI DRAFT ── -->
+    <div id="sec-draft" class="section-divider">
+      <span class="section-divider-label">🤖 AI Draft Reply</span>
+      <div class="section-divider-line"></div>
+      ${em.aiConfidence && em.aiConfidence!=='—'
+        ? `<span style="font-size:11px;color:var(--success);font-weight:600;white-space:nowrap;">✓ ${escHtml(em.aiConfidence)} confidence</span>`
+        : `<span style="font-size:11px;color:#fca5a5;font-weight:600;white-space:nowrap;">⚠ Manual review</span>`}
+    </div>
+
     <div class="detail-ai">
-      <div class="detail-ai-header" style="flex-wrap:wrap;gap:6px;">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="url(#aig)" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="url(#aig)" stroke-width="1.5" stroke-linecap="round"/><defs><linearGradient id="aig" x1="0" y1="0" x2="16" y2="16"><stop stop-color="#7F21FF"/><stop offset="1" stop-color="#FF569D"/></linearGradient></defs></svg>
-        <span class="ai-panel-label">AI Draft Reply</span>
-        ${em.aiConfidence && em.aiConfidence !== '—'
-          ? `<span style="font-size:11px;color:var(--success);font-weight:600;">✓ ${escHtml(em.aiConfidence)} confidence</span>`
-          : `<span style="font-size:11px;color:#fca5a5;font-weight:600;">⚠ Manual review required</span>`}
+      <div class="detail-ai-header">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="url(#aig)" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="url(#aig)" stroke-width="1.5" stroke-linecap="round"/><defs><linearGradient id="aig" x1="0" y1="0" x2="16" y2="16"><stop stop-color="#7F21FF"/><stop offset="1" stop-color="#FF569D"/></linearGradient></defs></svg>
+        <span class="ai-panel-label" style="font-size:12.5px;font-weight:700;">Suggested Reply</span>
+        <span style="font-size:11px;color:var(--text-muted);">— edit before sending</span>
         <div class="tpl-anchor" style="margin-left:auto;" id="tpl-anchor-${em.id}">
-          ${!isCompliance && canApprove ? `<button class="btn btn-ghost btn-xs" onclick="toggleTemplatePanel('${em.id}','${escHtml(em.company)}',event)" title="Insert a canned response template">📋 Templates</button>` : ''}
+          ${!isCompliance&&canApprove?`<button class="btn btn-ghost btn-xs" onclick="toggleTemplatePanel('${em.id}','${escHtml(em.company)}',event)">📋 Templates</button>`:''}
         </div>
       </div>
       <div class="detail-ai-body">
-        ${em.note ? `<div class="alert alert-warning" style="margin-bottom:12px;font-size:12px;"><span>⚠</span><span>${escHtml(em.note)}</span></div>` : ''}
+        ${em.note?`<div class="alert alert-warning" style="margin-bottom:12px;font-size:12px;"><span>⚠</span><span>${escHtml(em.note)}</span></div>`:''}
         <div class="detail-ai-draft" id="draft-${em.id}"
-             contenteditable="${isCompliance || !canApprove ? 'false' : 'true'}"
-             style="${isCompliance ? 'opacity:0.55;cursor:not-allowed;' : 'background:var(--bg-elevated);padding:16px;border-radius:var(--r-md);border:1px solid var(--border);min-height:120px;outline:none;'}"
+             contenteditable="${isCompliance||!canApprove?'false':'true'}"
+             style="${isCompliance?'opacity:0.55;cursor:not-allowed;':'background:var(--bg-elevated);padding:16px;border-radius:var(--r-md);border:1px solid var(--border);min-height:140px;outline:none;'}"
              onfocus="this.style.borderColor='rgba(127,33,255,0.5)'"
              onblur="this.style.borderColor='var(--border)'"
         >${formatText(em.aiDraft)}</div>
       </div>
       <div class="detail-actions">
-        ${!isCompliance && canApprove ? `
+        ${!isCompliance&&canApprove?`
           <button class="btn btn-primary btn-sm" id="approve-btn-${em.id}" onclick="approveEmail('${em.id}')">✓ Approve &amp; Send</button>
           <button class="btn btn-secondary btn-sm" onclick="toggleEdit('${em.id}')">✏ Edit Draft</button>
-        ` : ''}
+        `:''}
         <button class="btn btn-ghost btn-sm" onclick="flagCompliance('${em.id}')">🔒 Flag Compliance</button>
         <a href="email-review.html?id=${em.id}" class="btn btn-ghost btn-sm" style="text-decoration:none;">⤢ Full Review</a>
         <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="archiveEmail('${em.id}')">Archive</button>
       </div>
     </div>
 
-    <!-- Internal Comments -->
-    <div style="padding:0 20px 24px;">
-      <div class="section-label" style="margin-top:8px;">Internal Notes <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(not visible to client)</span></div>
-      <div id="comment-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+    <!-- ── INTERNAL NOTES ── -->
+    <div id="sec-notes" class="section-divider" style="margin-top:4px;">
+      <span class="section-divider-label">💬 Internal Notes</span>
+      <div class="section-divider-line"></div>
+      <span style="font-size:10px;color:var(--text-muted);font-weight:400;white-space:nowrap;">not visible to client</span>
+    </div>
+
+    <div class="detail-notes">
+      <div id="comment-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
         <div class="comment-item">
           <div class="user-avatar" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,#22C55E,#7F21FF);">FP</div>
           <div class="comment-body">
@@ -378,6 +435,52 @@ function selectEmail(id) {
       </div>
     </div>
   `;
+
+  /* After render: sync sticky-nav top to actual header height + wire scroll-spy */
+  requestAnimationFrame(() => {
+    const hdr = document.getElementById('dp-header');
+    const nav = document.getElementById('dp-nav');
+    if (hdr && nav) {
+      nav.style.top = hdr.offsetHeight + 'px';
+      const stickyH = hdr.offsetHeight + nav.offsetHeight + 10;
+      ['sec-email','sec-draft','sec-notes'].forEach(sid => {
+        const el = document.getElementById(sid);
+        if (el) el.style.scrollMarginTop = stickyH + 'px';
+      });
+    }
+  });
+
+  const dp = document.getElementById('detail-pane');
+  if (dp) {
+    dp.removeEventListener('scroll', _dpScrollSpy);
+    dp.addEventListener('scroll', _dpScrollSpy, { passive: true });
+    dp.scrollTop = 0;
+  }
+}
+
+/* ── Scroll to a section smoothly ──────────────────────────── */
+function scrollToDetailSection(sectionId) {
+  const el = document.getElementById(sectionId);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Scroll-spy: highlight active section tab ───────────────── */
+function _dpScrollSpy() {
+  const dp = document.getElementById('detail-pane');
+  if (!dp) return;
+  const hdr = document.getElementById('dp-header');
+  const nav = document.getElementById('dp-nav');
+  const offset = (hdr?.offsetHeight || 82) + (nav?.offsetHeight || 40) + 24;
+  const scrollTop = dp.scrollTop + offset;
+  const secs = ['sec-email','sec-draft','sec-notes'];
+  let activeIdx = 0;
+  secs.forEach((sid, i) => {
+    const el = document.getElementById(sid);
+    if (el && el.offsetTop <= scrollTop) activeIdx = i;
+  });
+  document.querySelectorAll('.detail-section-tab').forEach((t, i) =>
+    t.classList.toggle('active', i === activeIdx)
+  );
 }
 
 /* ── Edit toggle ───────────────────────────────── */
