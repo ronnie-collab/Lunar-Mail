@@ -1307,12 +1307,3 @@ ul { list-style: none; }
   height: 1px;
   background: var(--border);
 }
-
-/* ── Responsive ────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .app-shell { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
-  .main-content { margin-left: 0; }
-  .stat-grid { grid-template-columns: 1fr 1fr; }
-  .inbox-layout { grid-template-columns: 1fr; }
-}
