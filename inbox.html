@@ -6,6 +6,10 @@
 <title>Lunar Mail — Inbox</title>
 <link rel="stylesheet" href="css/main.css"/>
 <style>
+  /* ── Grid layout fix: main.css adds margin-left on .main-content which
+        double-offsets it inside the app-shell CSS grid. Override here. ── */
+  .main-content { margin-left: 0 !important; min-width: 0; }
+
   /* ── Inbox split layout ──────────────────────────────────────────── */
   .inbox-wrap { display:grid; grid-template-columns:380px 1fr; height:calc(100vh - 97px); overflow:hidden; }
 
