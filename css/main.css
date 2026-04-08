@@ -115,8 +115,7 @@ ul { list-style: none; }
 
 /* ── App Shell Layout ──────────────────────────────────────── */
 .app-shell {
-  display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  display: block;
   min-height: 100vh;
 }
 
