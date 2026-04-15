@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Email Review — Lunar Mail</title>
-<link rel="stylesheet" href="css/main.css?v=3"/>
+<link rel="stylesheet" href="css/main.css"/>
 <style>
 
 /* ── Review-specific layout ──────────────────────────── */
@@ -688,7 +688,7 @@
 
 </div><!-- /review-shell -->
 
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js"></script>
 <script>
 /* ─────────────────────────────────────────────
    Email Review Page Logic
@@ -756,11 +756,11 @@ function populatePage() {
   }
 
   // Email body
-  document.getElementById('emailBody').textContent = email.body || 'No content.';
+  document.getElementById('emailBody').innerHTML = mdToHtml(email.body || 'No content.');
 
   // AI Draft
   const draft = email.aiDraft || 'No draft available.';
-  document.getElementById('draftEditor').textContent = draft;
+  document.getElementById('draftEditor').innerHTML = mdToHtml(draft);
 
   // Confidence
   const conf = email.aiConfidence || '—';
@@ -885,7 +885,7 @@ function regenDraft() {
   setTimeout(() => {
     regenCount = (regenCount + 1) % 2;
     if (regenCount === 1 && email.aiDraft) {
-      document.getElementById('draftEditor').textContent = email.aiDraft.replace('Best regards', 'Kind regards') + '\n\n[Alternative draft — same intent, varied tone]';
+      document.getElementById('draftEditor').innerHTML = mdToHtml(email.aiDraft.replace('Best regards', 'Kind regards') + '\n\n[Alternative draft — same intent, varied tone]');
     }
     btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M14 8A6 6 0 112 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Regenerate Draft`;
     btn.disabled = false;
@@ -895,7 +895,7 @@ function regenDraft() {
 
 // ── Copy draft ──────────────────────────────
 function copyDraft() {
-  const text = document.getElementById('draftEditor').textContent;
+  const text = document.getElementById('draftEditor').innerText;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => showToast('Draft copied to clipboard', 'success'));
   } else {
@@ -1046,6 +1046,15 @@ function applyTemplateReview(templateId) {
 
   document.getElementById('tpl-panel')?.remove();
   showToast(`📋 Template applied — "${tpl.name}"`, 'success');
+}
+
+// ── Markdown → HTML helper ──────────────────
+function mdToHtml(raw) {
+  if (!raw) return '';
+  return raw
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
 }
 
 // ── Init ────────────────────────────────────

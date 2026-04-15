@@ -4,8 +4,8 @@
 **Owner:** Ronnie David (ronnie@lunarrails.io)
 **Version:** 1.0 — Phase 1 Prototype
 **Status:** Review Build — IT Testing
-**Repo:** https://github.com/Lunar-Rails/lunar-mail
-**Live URL:** https://lunar-mail.netlify.app *(pending deployment)*
+**Repo:** https://github.com/ronnie-collab/Lunar-Mail
+**Live URL:** https://ronnie-collab.github.io/Lunar-Mail/
 
 ---
 
@@ -144,11 +144,15 @@ Built on the **Lunar Rails Design System** (dark-only, space-age aesthetic):
 
 ## Deployment
 
-### Netlify (current)
+### GitHub Pages (current)
 
-This is a **static site** — no build step required.
+This is a **static site** — no build step required. The site deploys automatically via GitHub Pages on every push to `main`.
 
-1. Connect the `Lunar-Rails/lunar-mail` GitHub repository to Netlify
+**Live URL:** https://ronnie-collab.github.io/Lunar-Mail/
+
+### Netlify (optional alternative)
+
+1. Connect the `ronnie-collab/Lunar-Mail` GitHub repository to Netlify
 2. Set **Publish directory** to `.` (root)
 3. No build command needed
 4. Security headers and redirects are configured in `netlify.toml`
