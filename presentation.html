@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lunar Mail — Management Overview</title>
+<style>
+  :root {
+    --bg:       #0A0A14;
+    --bg-card:  #14142A;
+    --bg-light: #1C1C38;
+    --bg-elev:  #22224A;
+    --purple:   #7F21FF;
+    --purpleL:  #A855F7;
+    --pink:     #FF569D;
+    --white:    #FFFFFF;
+    --sec:      #B0B0CC;
+    --dim:      #606080;
+    --border:   rgba(127,33,255,0.25);
+    --glow:     0 0 40px rgba(127,33,255,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    color: var(--white);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Deck container ── */
+  #deck {
+    position: relative;
+    width: 100%; height: 100%;
+  }
+
+  /* ── Slides ── */
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.45s cubic-bezier(.4,0,.2,1), transform 0.45s cubic-bezier(.4,0,.2,1);
+    transform: translateX(60px);
+  }
+  .slide.active {
+    opacity: 1; pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.prev {
+    opacity: 0; transform: translateX(-60px);
+  }
+
+  /* ── Nav bar ── */
+  #nav {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(20,20,42,0.92); border: 1px solid var(--border);
+    border-radius: 50px; padding: 10px 20px;
+    backdrop-filter: blur(12px);
+    z-index: 100;
+    box-shadow: var(--glow);
+  }
+  #nav button {
+    background: none; border: none; cursor: pointer;
+    color: var(--sec); font-size: 18px; padding: 4px 8px;
+    border-radius: 8px; transition: color .2s, background .2s;
+    line-height: 1;
+  }
+  #nav button:hover { color: var(--white); background: rgba(127,33,255,0.2); }
+  #nav button:disabled { color: var(--dim); cursor: default; }
+  #counter {
+    font-size: 12px; color: var(--sec); min-width: 52px; text-align: center;
+    letter-spacing: .04em;
+  }
+  #dots { display: flex; gap: 6px; align-items: center; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--dim); transition: all .3s; cursor: pointer;
+  }
+  .dot.active { background: var(--purple); width: 18px; border-radius: 3px; }
+
+  /* ── Keyboard hint ── */
+  #hint {
+    position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: var(--dim); letter-spacing: .04em;
+    transition: opacity 1s;
+  }
+
+  /* ── Shared slide layout ── */
+  .slide-inner {
+    flex: 1; padding: 52px 60px 90px;
+    display: flex; flex-direction: column;
+    max-width: 1280px; margin: 0 auto; width: 100%;
+  }
+  .slide-tag {
+    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--purple); margin-bottom: 16px;
+  }
+  .slide-title {
+    font-size: clamp(28px,3vw,42px); font-weight: 700; line-height: 1.15;
+    color: var(--white); margin-bottom: 12px;
+  }
+  .slide-sub {
+    font-size: clamp(14px,1.4vw,17px); color: var(--sec);
+    line-height: 1.55; max-width: 680px;
+  }
+  .divider {
+    width: 48px; height: 3px;
+    background: linear-gradient(90deg, var(--purple), var(--pink));
+    border-radius: 2px; margin: 20px 0;
+  }
+
+  /* ═══════════════════════════
+     SLIDE 1 — TITLE
+  ══════════════════════════ */
+  #s1 {
+    background: radial-gradient(ellipse 80% 70% at 60% 40%, rgba(127,33,255,0.18) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 50% at 20% 80%, rgba(255,86,157,0.10) 0%, transparent 60%),
+                var(--bg);
+  }
+  #s1 .slide-inner { justify-content: center; align-items: flex-start; }
+  .s1-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(127,33,255,0.12); border: 1px solid rgba(127,33,255,0.3);
+    border-radius: 20px; padding: 5px 14px;
+    font-size: 12px; font-weight: 600; color: var(--purpleL);
+    letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .s1-logo {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+  }
+  .s1-icon {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 900; color: #fff;
+    box-shadow: 0 0 30px rgba(127,33,255,0.4);
+  }
+  .s1-brand { font-size: 48px; font-weight: 800; letter-spacing: -.01em;
+    background: linear-gradient(90deg, var(--white) 40%, var(--purpleL));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .s1-byline { font-size: 13px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+  .s1-headline {
+    font-size: clamp(22px,2.8vw,38px); font-weight: 300; color: var(--sec);
+    line-height: 1.3; margin-bottom: 36px; max-width: 680px;
+  }
+  .s1-headline strong { color: var(--white); font-weight: 600; }
+  .s1-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+  .s1-pill {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 10px 20px;
+    font-size: 13px; color: var(--sec);
+  }
+  .s1-pill strong { color: var(--white); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin-bottom: 3px; }
+  .oval1 {
+    position: absolute; right: -40px; top: 10%; width: 460px; height: 460px;
+    border-radius: 50%; border: 1px solid rgba(127,33,255,0.12); pointer-events:none;
+  }
+  .oval2 {
+    position: absolute; right: 60px; top: 15%; width: 300px; height: 300px;
+    border-radius: 50%; background: radial-gradient(circle, rgba(127,33,255,0.08), transparent 70%);
+    pointer-events:none;
+  }
+
+  /* ═══════════════════════════
+     SLIDE 2 — FEATURE OVERVIEW
+  ══════════════════════════ */
+  .cards-grid {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 28px;
+  }
+  .feat-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px 20px;
+    transition: border-color .2s, transform .2s;
+  }
+  .feat-card:hover { border-color: rgba(127,33,255,0.5); transform: translateY(-2px); }
+  .feat-icon { font-size: 26px; margin-bottom: 12px; }
+  .feat-title { font-size: 15px; font-weight: 600; color: var(--white); margin-bottom: 7px; }
+  .feat-desc { font-size: 13px; color: var(--sec); line-height: 1.5; }
+  .feat-tag {
+    display: inline-block; margin-top: 10px;
+    background: rgba(127,33,255,0.12); border: 1px solid rgba(127,33,255,0.25);
+    border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--purpleL);
+    font-weight: 600;
+  }
+
+  /* ═══════════════════════════
+     SLIDES 3–8 — FEATURE DETAIL
+  ══════════════════════════ */
+  .detail-layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+    flex: 1; align-items: center; margin-top: 20px;
+  }
+  .detail-layout.flip { direction: rtl; }
+  .detail-layout.flip > * { direction: ltr; }
+  .detail-text {}
+  .detail-text ul { list-style: none; margin: 18px 0; display: flex; flex-direction: column; gap: 10px; }
+  .detail-text li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 14px; color: var(--sec); line-height: 1.5;
+  }
+  .detail-text li::before {
+    content: ''; display: block; flex-shrink: 0;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--purple); margin-top: 7px;
+  }
+  .detail-text li strong { color: var(--white); }
+  .detail-screen {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4), var(--glow);
+    min-height: 260px; display: flex; flex-direction: column;
+  }
+  .screen-bar {
+    background: rgba(127,33,255,0.1); border-bottom: 1px solid var(--border);
+    padding: 10px 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .screen-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .screen-title { font-size: 11px; color: var(--dim); margin-left: 4px; letter-spacing: .04em; }
+  .screen-body { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .screen-row {
+    background: var(--bg-light); border-radius: 8px; padding: 10px 12px;
+    font-size: 12px; color: var(--sec); display: flex; align-items: center; gap: 10px;
+  }
+  .screen-row .chip {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    background: rgba(127,33,255,0.15); color: var(--purpleL);
+    flex-shrink: 0;
+  }
+  .screen-row .chip.green { background: rgba(34,197,94,0.12); color: #4ade80; }
+  .screen-row .chip.red   { background: rgba(239,68,68,0.12);  color: #f87171; }
+  .screen-row .chip.amber { background: rgba(251,191,36,0.12); color: #fbbf24; }
+  .screen-row .chip.pink  { background: rgba(255,86,157,0.12); color: var(--pink); }
+
+  /* Stat block */
+  .stat-block {
+    background: var(--bg-light); border-radius: 10px; padding: 14px 16px;
+    text-align: center;
+  }
+  .stat-num { font-size: 32px; font-weight: 700;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label { font-size: 11px; color: var(--dim); margin-top: 2px; text-transform: uppercase; letter-spacing: .06em; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 12px; }
+
+  /* ═══════════════════════════
+     SLIDE 9 — SUMMARY
+  ══════════════════════════ */
+  .summary-layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 36px;
+    flex: 1; margin-top: 24px;
+  }
+  .next-steps { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .step-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .step-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .step-text { font-size: 13px; color: var(--sec); line-height: 1.4; }
+  .step-text strong { color: var(--white); }
+
+  .cta-box {
+    margin-top: 16px;
+    background: linear-gradient(135deg, rgba(127,33,255,0.15), rgba(255,86,157,0.1));
+    border: 1px solid rgba(127,33,255,0.3); border-radius: 12px;
+    padding: 18px 20px; text-align: center;
+  }
+  .cta-url { font-size: 13px; color: var(--purpleL); font-weight: 600; word-break: break-all; }
+  .cta-label { font-size: 11px; color: var(--dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ── Progress bar ── */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--purple), var(--pink));
+    transition: width .4s;
+    z-index: 200;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .slide-inner { padding: 36px 24px 80px; }
+    .cards-grid { grid-template-columns: repeat(2,1fr); }
+    .detail-layout, .summary-layout { grid-template-columns: 1fr; }
+    .detail-layout.flip { direction: ltr; }
+    .detail-screen { min-height: 180px; }
+    .s1-brand { font-size: 36px; }
+    .oval1, .oval2 { display: none; }
+  }
+  @media (max-width: 600px) {
+    .cards-grid { grid-template-columns: 1fr; }
+    .s1-meta { flex-direction: column; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<div id="deck">
+
+  <!-- ══ SLIDE 1 — TITLE ══ -->
+  <div class="slide active" id="s1">
+    <div class="oval1"></div>
+    <div class="oval2"></div>
+    <div class="slide-inner">
+      <div class="s1-label">
+        <span>🚀</span> Phase 1 Prototype · April 2026
+      </div>
+      <div class="s1-logo">
+        <div class="s1-icon">R</div>
+        <div>
+          <div class="s1-byline">Lunar Rails</div>
+          <div class="s1-brand">LUNAR MAIL</div>
+        </div>
+      </div>
+      <div class="s1-headline">
+        <strong>AI-Powered Email Management Portal</strong><br>
+        Review, approve, and send — with full compliance control.
+      </div>
+      <div class="s1-meta">
+        <div class="s1-pill"><strong>Owner</strong>Ronnie David · ronnie@lunarrails.io</div>
+        <div class="s1-pill"><strong>Version</strong>1.0 — Phase 1 Prototype</div>
+        <div class="s1-pill"><strong>Mailboxes</strong>5 across 3 companies</div>
+        <div class="s1-pill"><strong>Status</strong>Review Build — IT Testing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 2 — FEATURE OVERVIEW ══ -->
+  <div class="slide" id="s2">
+    <div class="slide-inner">
+      <div class="slide-tag">Platform Overview</div>
+      <div class="slide-title">Six Core Capabilities</div>
+      <div class="slide-sub">Everything your team needs to manage client email at scale — with AI doing the heavy lifting.</div>
+      <div class="cards-grid">
+        <div class="feat-card">
+          <div class="feat-icon">📥</div>
+          <div class="feat-title">Unified Multi-Mailbox Inbox</div>
+          <div class="feat-desc">All 5 mailboxes across Perpolis OTC, 40 Acres, and Paidly in one view. Filter by company, status, or category.</div>
+          <span class="feat-tag">Phase 1 Live</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">🤖</div>
+          <div class="feat-title">AI Draft Generation</div>
+          <div class="feat-desc">Claude generates context-aware replies using canned response templates. 94% avg confidence on Phase 1 emails.</div>
+          <span class="feat-tag">Claude API</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">🔒</div>
+          <div class="feat-title">Zero-Send Policy</div>
+          <div class="feat-desc">No email leaves the system without explicit human approval. Every draft is held for review before queuing.</div>
+          <span class="feat-tag">Always On</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">🛡️</div>
+          <div class="feat-title">Compliance Queue</div>
+          <div class="feat-desc">Auto-flags AML, KYC, and regulatory emails. 24h/48h escalation chain with Slack notifications to compliance leads.</div>
+          <span class="feat-tag">Auto-Escalate</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">👥</div>
+          <div class="feat-title">Role-Based Access</div>
+          <div class="feat-desc">13 users across Super Admin, Admin, Manager, Analyst, and Reviewer roles. Google SSO — no passwords.</div>
+          <span class="feat-tag">Google SSO</span>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon">📋</div>
+          <div class="feat-title">Full Audit Trail</div>
+          <div class="feat-desc">Every approval, edit, flag, and escalation is logged. Export access logs for compliance review at any time.</div>
+          <span class="feat-tag">Export Ready</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 3 — INBOX ══ -->
+  <div class="slide" id="s3">
+    <div class="slide-inner">
+      <div class="slide-tag">Feature 01 · Inbox</div>
+      <div class="divider"></div>
+      <div class="detail-layout">
+        <div class="detail-text">
+          <div class="slide-title">Unified Inbox</div>
+          <div class="slide-sub">One place for all client email across every company and mailbox.</div>
+          <ul>
+            <li><strong>8 emails</strong> currently pending review across 5 mailboxes</li>
+            <li>Filter by <strong>company, category, or status</strong> — Unread, Pending, Compliance, Spam</li>
+            <li>Real-time <strong>AI confidence badge</strong> on each email before you open it</li>
+            <li>Split-pane view: <strong>email list left, detail + AI draft right</strong></li>
+            <li><strong>Search</strong> across all mailboxes with instant results</li>
+          </ul>
+        </div>
+        <div class="detail-screen">
+          <div class="screen-bar">
+            <div class="screen-dot" style="background:#f87171"></div>
+            <div class="screen-dot" style="background:#fbbf24"></div>
+            <div class="screen-dot" style="background:#4ade80"></div>
+            <span class="screen-title">Lunar Mail — Inbox</span>
+          </div>
+          <div class="screen-body">
+            <div class="screen-row">
+              <span style="flex:1">David Chen · OTC Bitcoin Purchase — 50 BTC</span>
+              <span class="chip">PROSPECT</span><span class="chip amber">PENDING</span>
+            </div>
+            <div class="screen-row">
+              <span style="flex:1">Sarah Whitmore · KYC Documentation Follow-Up</span>
+              <span class="chip">KYC</span><span class="chip green">DRAFT</span>
+            </div>
+            <div class="screen-row">
+              <span style="flex:1">Reginald Thompson · AML Query</span>
+              <span class="chip red">COMPLIANCE</span><span class="chip red">ESCALATED</span>
+            </div>
+            <div class="screen-row">
+              <span style="flex:1">James Beaumont · 40 Acres Growth Fund</span>
+              <span class="chip green">NEW INQUIRY</span><span class="chip amber">PENDING</span>
+            </div>
+            <div class="screen-row">
+              <span style="flex:1">Priya Nair · Regulatory Filing Deadline</span>
+              <span class="chip pink">COMPLIANCE</span><span class="chip amber">REVIEW</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 4 — AI DRAFT ══ -->
+  <div class="slide" id="s4">
+    <div class="slide-inner">
+      <div class="slide-tag">Feature 02 · AI Drafts</div>
+      <div class="divider"></div>
+      <div class="detail-layout flip">
+        <div class="detail-text">
+          <div class="slide-title">AI-Generated Replies</div>
+          <div class="slide-sub">Claude drafts professional replies using your canned responses and company tone.</div>
+          <ul>
+            <li><strong>94% average confidence</strong> on Phase 1 Perpolis OTC emails</li>
+            <li>Drafts are <strong>held until approved</strong> — Zero-Send Policy always enforced</li>
+            <li>One-click <strong>Approve &amp; Send</strong> queues the reply via Front API</li>
+            <li><strong>Edit inline</strong> with formatting toolbar before approving</li>
+            <li><strong>Regenerate</strong> with a different tone, or apply a saved template</li>
+            <li>Internal <strong>Notes</strong> tab for team commentary — never sent to client</li>
+          </ul>
+        </div>
+        <div class="detail-screen">
+          <div class="screen-bar">
+            <div class="screen-dot" style="background:#f87171"></div>
+            <div class="screen-dot" style="background:#fbbf24"></div>
+            <div class="screen-dot" style="background:#4ade80"></div>
+            <span class="screen-title">AI Draft Reply · 94% Confidence</span>
+          </div>
+          <div class="screen-body">
+            <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:10px 12px;font-size:12px;color:#4ade80;display:flex;align-items:center;gap:8px;">
+              <span>✓</span><span>High Confidence · Review before approving</span>
+            </div>
+            <div style="background:rgba(127,33,255,0.06);border:1px solid rgba(127,33,255,0.15);border-radius:8px;padding:12px;font-size:12px;color:var(--sec);line-height:1.6;">
+              Dear David,<br><br>
+              Thank you for reaching out to Perpolis OTC. We'd be delighted to assist Quantum Capital Partners with a 50 BTC purchase.<br><br>
+              <strong style="color:var(--white)">Spread:</strong> For a 50 BTC position, our spread is typically 0.3–0.5% above spot...<br><br>
+              <em style="color:var(--dim)">— edit before sending —</em>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;background:linear-gradient(135deg,var(--purple),var(--pink));border-radius:8px;padding:9px;text-align:center;font-size:12px;font-weight:600;color:#fff;">✓ Approve &amp; Send</div>
+              <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--sec);">✎ Edit</div>
+              <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:9px 14px;font-size:12px;color:var(--sec);">🔒 Flag</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 5 — EMAIL REVIEW ══ -->
+  <div class="slide" id="s5">
+    <div class="slide-inner">
+      <div class="slide-tag">Feature 03 · Email Review</div>
+      <div class="divider"></div>
+      <div class="detail-layout">
+        <div class="detail-text">
+          <div class="slide-title">Full-Screen Review</div>
+          <div class="slide-sub">Side-by-side original email and AI draft — everything needed to approve in one view.</div>
+          <ul>
+            <li><strong>Side-by-side layout</strong> — original email left, AI draft right</li>
+            <li>Circular <strong>confidence ring</strong> with percentage and description</li>
+            <li><strong>Inline draft editing</strong> with bold, italic, underline toolbar</li>
+            <li>Keyboard shortcuts: <strong>⌘↵ Approve · ⌘E Edit · ⌘F Flag</strong></li>
+            <li><strong>Escalation banner</strong> for compliance emails — Approve disabled</li>
+            <li>Archive, regenerate, and saved <strong>template library</strong></li>
+          </ul>
+        </div>
+        <div class="detail-screen">
+          <div class="screen-bar">
+            <div class="screen-dot" style="background:#f87171"></div>
+            <div class="screen-dot" style="background:#fbbf24"></div>
+            <div class="screen-dot" style="background:#4ade80"></div>
+            <span class="screen-title">Review: OTC Bitcoin Purchase — Lunar Mail</span>
+          </div>
+          <div class="screen-body">
+            <div style="display:flex;gap:10px;margin-bottom:4px;">
+              <div style="flex:1;background:var(--bg-light);border-radius:8px;padding:10px;font-size:11px;color:var(--dim);">
+                <div style="color:var(--sec);font-weight:600;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Original Email</div>
+                <div style="color:var(--sec);">Hi, I represent Quantum Capital Partners and we are looking to purchase approximately 50 BTC via OTC desk in the next 48 hours...</div>
+              </div>
+              <div style="flex:1;background:var(--bg-light);border-radius:8px;padding:10px;font-size:11px;color:var(--dim);">
+                <div style="color:var(--purpleL);font-weight:600;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">AI Draft · 94% ✓</div>
+                <div style="color:var(--sec);">Dear David, Thank you for reaching out to Perpolis OTC. We'd be delighted to assist...</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1.5;background:linear-gradient(135deg,var(--purple),var(--pink));border-radius:8px;padding:8px;text-align:center;font-size:11px;font-weight:700;color:#fff;">✓ Approve &amp; Send</div>
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;font-size:11px;color:var(--sec);">✎ Edit Draft</div>
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;font-size:11px;color:var(--sec);">← Back</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 6 — COMPLIANCE ══ -->
+  <div class="slide" id="s6">
+    <div class="slide-inner">
+      <div class="slide-tag">Feature 04 · Compliance</div>
+      <div class="divider"></div>
+      <div class="detail-layout flip">
+        <div class="detail-text">
+          <div class="slide-title">Compliance Queue</div>
+          <div class="slide-sub">Automatic detection, escalation, and resolution tracking for every regulated email.</div>
+          <ul>
+            <li>Auto-flags <strong>AML, KYC, OTC regulatory</strong> emails on receipt</li>
+            <li><strong>24h reminder</strong> → primary contact if no action taken</li>
+            <li><strong>48h auto-escalate</strong> → backup list via Slack (weekdays only)</li>
+            <li>Escalation chains: <strong>Mark Antidormi (Perpolis)</strong> · <strong>Sofia (40 Acres)</strong></li>
+            <li>AI draft <strong>withheld</strong> on compliance emails — manual reply only</li>
+            <li><strong>Resolved history</strong> with full audit trail per item</li>
+          </ul>
+        </div>
+        <div class="detail-screen">
+          <div class="screen-bar">
+            <div class="screen-dot" style="background:#f87171"></div>
+            <div class="screen-dot" style="background:#fbbf24"></div>
+            <div class="screen-dot" style="background:#4ade80"></div>
+            <span class="screen-title">🔒 Compliance Queue · 2 Active</span>
+          </div>
+          <div class="screen-body">
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:12px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="font-size:11px;font-weight:700;color:#f87171;">🔴 CRITICAL · ESCALATED</span>
+                <span style="margin-left:auto;font-size:11px;color:var(--dim);">26h elapsed</span>
+              </div>
+              <div style="font-size:12px;color:var(--sec);">Reginald Thompson · AML Query (>CAD $500K)</div>
+              <div style="margin-top:8px;background:rgba(239,68,68,0.08);border-radius:6px;height:4px;">
+                <div style="width:54%;height:100%;background:#f87171;border-radius:6px;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--dim);margin-top:4px;">26h / 48h escalation window · Weekdays only</div>
+            </div>
+            <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px;">
+              <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:4px;">🟡 Regulatory Filing Deadline — 40 Acres</div>
+              <div style="font-size:12px;color:var(--sec);">Sofia Ruiz · compliance@40acres.pro · Awaiting review</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;font-size:11px;color:var(--sec);">🔒 Mark Resolved</div>
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;font-size:11px;color:var(--sec);">📧 View Email</div>
+              <div style="flex:1;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px;text-align:center;font-size:11px;color:#f87171;">⬆ Escalate Now</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 7 — ADMIN ══ -->
+  <div class="slide" id="s7">
+    <div class="slide-inner">
+      <div class="slide-tag">Feature 05 · Admin Panel</div>
+      <div class="divider"></div>
+      <div class="detail-layout">
+        <div class="detail-text">
+          <div class="slide-title">Admin &amp; Access Control</div>
+          <div class="slide-sub">Full user, mailbox, and integration management — visible to Super Admin and Admin roles only.</div>
+          <ul>
+            <li><strong>13 users × 5 mailboxes</strong> permission matrix — Star / Peek / — per cell</li>
+            <li>Four tabs: <strong>Users &amp; Access · Gmail SSO · Mailbox Config · Audit Log</strong></li>
+            <li><strong>Google SSO setup guide</strong> for Notion, Front, Slack, and Portal</li>
+            <li>Per-mailbox <strong>phase status</strong> — Live / Phase 2 / Phase 3</li>
+            <li><strong>Audit log</strong> — every approval, edit, and access event timestamped</li>
+            <li><strong>+ Invite User</strong> and Export Access Log buttons in header</li>
+          </ul>
+        </div>
+        <div class="detail-screen">
+          <div class="screen-bar">
+            <div class="screen-dot" style="background:#f87171"></div>
+            <div class="screen-dot" style="background:#fbbf24"></div>
+            <div class="screen-dot" style="background:#4ade80"></div>
+            <span class="screen-title">Admin Panel — Access Control Matrix</span>
+          </div>
+          <div class="screen-body">
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+              <div style="flex:1;background:linear-gradient(135deg,rgba(127,33,255,0.15),rgba(127,33,255,0.05));border:1px solid rgba(127,33,255,0.3);border-radius:8px;padding:7px;text-align:center;font-size:11px;font-weight:600;color:var(--purpleL);">👥 Users &amp; Access</div>
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center;font-size:11px;color:var(--dim);">🔑 Gmail SSO</div>
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center;font-size:11px;color:var(--dim);">📬 Mailboxes</div>
+              <div style="flex:1;background:var(--bg-light);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center;font-size:11px;color:var(--dim);">📋 Audit</div>
+            </div>
+            <div class="screen-row" style="font-size:11px;">
+              <span style="flex:1;font-weight:600;color:var(--white);">Ronnie David</span>
+              <span class="chip">Super Admin</span>
+              <span style="color:#fbbf24;font-size:13px;">★ ★ ★ ★</span>
+            </div>
+            <div class="screen-row" style="font-size:11px;">
+              <span style="flex:1;color:var(--sec);">Elton</span>
+              <span class="chip">Admin</span>
+              <span style="color:var(--dim);font-size:13px;">● ● ● ●</span>
+            </div>
+            <div class="screen-row" style="font-size:11px;">
+              <span style="flex:1;color:var(--sec);">Mark Antidormi</span>
+              <span class="chip amber">Manager</span>
+              <span style="color:var(--dim);font-size:13px;">👁 P — —</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 8 — DASHBOARD ══ -->
+  <div class="slide" id="s8">
+    <div class="slide-inner">
+      <div class="slide-tag">Feature 06 · Dashboard</div>
+      <div class="divider"></div>
+      <div class="detail-layout flip">
+        <div class="detail-text">
+          <div class="slide-title">Dashboard &amp; Analytics</div>
+          <div class="slide-sub">Real-time view of all email activity, AI performance, and compliance status across every mailbox.</div>
+          <ul>
+            <li><strong>4 KPI cards</strong>: Emails Today · Pending Review · Compliance Alerts · Approved</li>
+            <li><strong>Compliance alert panel</strong> — escalated items surface immediately on login</li>
+            <li>AI performance: <strong>94% avg confidence · 18s draft generation · 100% Zero-Send</strong></li>
+            <li><strong>Recent emails list</strong> with direct link to inbox or review view</li>
+            <li><strong>Activity feed</strong> — team approvals, AI drafts, and compliance events in real time</li>
+            <li>Quick nav: <strong>Open Inbox</strong> and <strong>Compliance Queue</strong> buttons in header</li>
+          </ul>
+        </div>
+        <div class="detail-screen">
+          <div class="screen-bar">
+            <div class="screen-dot" style="background:#f87171"></div>
+            <div class="screen-dot" style="background:#fbbf24"></div>
+            <div class="screen-dot" style="background:#4ade80"></div>
+            <span class="screen-title">Lunar Mail — Dashboard</span>
+          </div>
+          <div class="screen-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
+              <div class="stat-block"><div class="stat-num" style="font-size:22px;">24</div><div class="stat-label">Emails Today</div></div>
+              <div class="stat-block"><div class="stat-num" style="font-size:22px;">8</div><div class="stat-label">Pending Review</div></div>
+              <div class="stat-block"><div class="stat-num" style="font-size:22px;background:linear-gradient(135deg,#f87171,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">2</div><div class="stat-label">Compliance Alerts</div></div>
+              <div class="stat-block"><div class="stat-num" style="font-size:22px;background:linear-gradient(135deg,#4ade80,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">14</div><div class="stat-label">Approved Today</div></div>
+            </div>
+            <div style="background:var(--bg-light);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--sec);display:flex;justify-content:space-between;">
+              <span>AI Confidence</span><span style="color:#4ade80;font-weight:600;">94%</span>
+            </div>
+            <div style="background:var(--bg-light);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--sec);display:flex;justify-content:space-between;">
+              <span>Zero-Send Policy</span><span style="color:#4ade80;font-weight:600;">100% enforced</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 9 — SUMMARY ══ -->
+  <div class="slide" id="s9"
+    style="background:radial-gradient(ellipse 70% 60% at 30% 50%, rgba(127,33,255,0.14) 0%, transparent 60%), var(--bg);">
+    <div class="slide-inner">
+      <div class="slide-tag">Summary &amp; Next Steps</div>
+      <div class="slide-title">Phase 1 — Ready for IT Review</div>
+      <div class="divider"></div>
+      <div class="summary-layout">
+        <div>
+          <div class="stat-grid">
+            <div class="stat-block"><div class="stat-num">5</div><div class="stat-label">Mailboxes</div></div>
+            <div class="stat-block"><div class="stat-num">3</div><div class="stat-label">Companies</div></div>
+            <div class="stat-block"><div class="stat-num">13</div><div class="stat-label">Users</div></div>
+          </div>
+          <div class="cta-box">
+            <div class="cta-label">Live Site</div>
+            <div class="cta-url">ronnie-collab.github.io/Lunar-Mail/</div>
+          </div>
+          <div class="cta-box" style="margin-top:10px;">
+            <div class="cta-label">GitHub Repository</div>
+            <div class="cta-url">github.com/ronnie-collab/Lunar-Mail</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Immediate Next Steps</div>
+          <div class="next-steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-text"><strong>IT review &amp; credentials</strong> — Front API token, Slack bot token, Anthropic API key, webhook URL</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-text"><strong>Connect clientservice@perpolis.ca</strong> — Live Front API + Make.com blueprint integration</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-text"><strong>Onboard Phase 1 users</strong> — Google SSO invites for all 13 team members and external manager</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-text"><strong>Shadow test</strong> — 1-week parallel run before live send approval enabled</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">5</div>
+              <div class="step-text"><strong>Phase 2</strong> — compliance@perpolis.ca · Phase 3 — 40 Acres &amp; Paidly mailboxes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Nav bar -->
+<div id="nav">
+  <button id="btnPrev" onclick="go(-1)" title="Previous (←)">←</button>
+  <div id="dots"></div>
+  <div id="counter">1 / 9</div>
+  <button id="btnNext" onclick="go(1)" title="Next (→)">→</button>
+</div>
+
+<div id="hint">Press ← → arrow keys or click to navigate</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const N = slides.length;
+let cur = 0;
+let hintHidden = false;
+
+function render() {
+  slides.forEach((s, i) => {
+    s.classList.remove('active', 'prev');
+    if (i === cur) s.classList.add('active');
+    else if (i < cur) s.classList.add('prev');
+  });
+  document.getElementById('counter').textContent = (cur+1) + ' / ' + N;
+  document.getElementById('btnPrev').disabled = cur === 0;
+  document.getElementById('btnNext').disabled = cur === N-1;
+  document.getElementById('progress').style.width = ((cur+1)/N*100) + '%';
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i===cur));
+  // hide hint after first nav
+  if (!hintHidden && cur > 0) {
+    hintHidden = true;
+    document.getElementById('hint').style.opacity = '0';
+  }
+}
+
+function go(dir) {
+  cur = Math.max(0, Math.min(N-1, cur + dir));
+  render();
+}
+
+// Build dots
+const dotsEl = document.getElementById('dots');
+for (let i = 0; i < N; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0?' active':'');
+  d.onclick = () => { cur = i; render(); };
+  dotsEl.appendChild(d);
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); go(-1); }
+  if (e.key === 'Home') { cur=0; render(); }
+  if (e.key === 'End')  { cur=N-1; render(); }
+});
+
+// Click anywhere on slide to advance
+document.getElementById('deck').addEventListener('click', e => {
+  if (!e.target.closest('#nav')) go(1);
+});
+
+// Touch swipe
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+}, {passive:true});
+
+render();
+</script>
+</body>
+</html>
